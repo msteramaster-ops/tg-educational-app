@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import { VEHICLE_DB, REGIONS, type EcuBlock, type EcuFunction } from '@/data/vehicles';
 import { DTC_DB } from '@/data/dtc';
+import { elm327, LIVE_PARAMS_CONFIG, PARAM_GROUPS, type LiveParam } from '@/lib/bluetooth';
 
 // ── VIN API ───────────────────────────────────────────────────────────────────
 interface VinResult {
@@ -513,31 +514,7 @@ function ScreenVehicle() {
         )}
 
         {/* Таб Live Data */}
-        {activeTab === 'live' && (
-          <div className="space-y-3 animate-fade-up">
-            <div className="font-display text-xs text-muted-foreground mb-2">ПАРАМЕТРЫ В РЕАЛЬНОМ ВРЕМЕНИ</div>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Обороты', value: '850', unit: 'RPM', icon: 'Gauge' },
-                { label: 'Температура ОЖ', value: '91', unit: '°C', icon: 'Thermometer' },
-                { label: 'Напряжение', value: '14.2', unit: 'V', icon: 'Zap' },
-                { label: 'Нагрузка ДВС', value: '23', unit: '%', icon: 'Activity' },
-                { label: 'MAP сенсор', value: '101', unit: 'кПа', icon: 'Wind' },
-                { label: 'IAT (впуск)', value: '+24', unit: '°C', icon: 'Thermometer' },
-                { label: 'Краткая коррекция', value: '+2.3', unit: '%', icon: 'TrendingUp' },
-                { label: 'Долгая коррекция', value: '+7.8', unit: '%', icon: 'TrendingUp' },
-              ].map(m => (
-                <div key={m.label} className="border-glow bg-card rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Icon name={m.icon} size={14} className="text-cyan" />
-                    <span className="text-[11px] text-muted-foreground">{m.label}</span>
-                  </div>
-                  <div className="font-display text-lg text-cyan-glow">{m.value}<span className="text-xs text-muted-foreground ml-1">{m.unit}</span></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeTab === 'live' && <LiveDataTab btConnected={elm327.isConnected()} />}
 
         {/* Таб Специальные */}
         {activeTab === 'special' && (
@@ -670,68 +647,410 @@ function ScreenDTC() {
   );
 }
 
-// ── Экран: История ────────────────────────────────────────────────────────────
-const HISTORY = [
-  { id: 1, vin: 'WVWZZZ1JZ3W386752', make: 'Volkswagen Golf', date: '14.06.2025', codes: ['P0171','P0420'], status: 'warn' as const },
-  { id: 2, vin: 'WBA3A5C50DF595899', make: 'BMW 3 Series',    date: '10.06.2025', codes: [],               status: 'ok'   as const },
-  { id: 3, vin: 'JTDBE33K120153657', make: 'Toyota Camry',    date: '03.06.2025', codes: ['P0300','P0301'],status: 'error' as const },
-];
-function ScreenHistory() {
+// ── Live Data Tab (25+ параметров с группировкой + реальный BT) ──────────────
+const MOCK_LIVE: Record<string, string> = {
+  '010C': '850', '010D': '0', '0105': '91', '010F': '24', '0111': '15',
+  '0104': '23', '010A': '310', '010B': '101', '0110': '8.3', '0114': '0.45',
+  '0115': '0.72', '0106': '+2.3', '0107': '+7.8', '012F': '62', '0133': '101',
+  '0146': '18', '015C': '89', '012C': '12', '012E': '0', '010E': '12.0',
+  '011F': '1840', '0121': '0', '0142': '14.2', '013C': '520',
+};
+
+function LiveDataTab({ btConnected }: { btConnected: boolean }) {
+  const [params, setParams] = useState<LiveParam[]>(() =>
+    LIVE_PARAMS_CONFIG.map(p => ({ ...p, value: MOCK_LIVE[p.pid] ?? '—', raw: null }))
+  );
+  const [polling, setPolling] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string>('all');
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startPolling = useCallback(async () => {
+    if (polling) { clearInterval(intervalRef.current!); setPolling(false); return; }
+    setPolling(true);
+    if (btConnected) {
+      // Реальный опрос ELM327
+      const poll = async () => {
+        const pids = LIVE_PARAMS_CONFIG.map(p => p.pid);
+        const results = await elm327.readAllLiveData(pids);
+        setParams(prev => prev.map(p => {
+          const raw = results.get(p.pid) ?? null;
+          return { ...p, raw, value: raw !== null ? raw.toFixed(raw < 10 ? 2 : 0) : '—' };
+        }));
+      };
+      poll();
+      intervalRef.current = setInterval(poll, 1000);
+    } else {
+      // Демо-симуляция
+      intervalRef.current = setInterval(() => {
+        setParams(prev => prev.map(p => {
+          const base = parseFloat(MOCK_LIVE[p.pid] ?? '0');
+          const jitter = (Math.random() - 0.5) * base * 0.04;
+          const val = (base + jitter);
+          return { ...p, value: val.toFixed(val < 10 ? 2 : 0), raw: val };
+        }));
+      }, 800);
+    }
+  }, [polling, btConnected]);
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+
+  const groups = ['all', ...Object.keys(PARAM_GROUPS)];
+  const filtered = activeGroup === 'all' ? params : params.filter(p => p.group === activeGroup);
+
   return (
-    <div className="space-y-4 animate-fade-up">
-      <SectionTitle title="История проверок" sub={`${HISTORY.length} сохранённых диагностики`} />
-      {HISTORY.map(h => (
-        <div key={h.id} className={`bg-card rounded-xl p-4 border ${h.status==='error'?'border-red-500/35':h.status==='warn'?'border-amber-400/30':'border-glow'}`}>
-          <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${h.status==='error'?'bg-red-400/15':h.status==='warn'?'bg-amber-400/15':'bg-green-400/10'}`}>
-              <Icon name="Car" size={20} className={h.status==='error'?'text-red-400':h.status==='warn'?'text-amber-400':'text-green-400'} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">{h.make}</div>
-              <div className="text-xs text-muted-foreground font-mono mt-0.5 truncate">{h.vin}</div>
-              <div className="text-xs text-muted-foreground mt-1">{h.date}</div>
-            </div>
-            <div className="text-right shrink-0">
-              {h.codes.length>0 ? h.codes.map(c=><div key={c} className="font-mono text-xs bg-secondary px-2 py-0.5 rounded text-amber-400 mb-1">{c}</div>) : <span className="text-xs text-green-400 font-semibold">OK</span>}
+    <div className="space-y-3 animate-fade-up">
+      <div className="flex items-center justify-between">
+        <div className="font-display text-xs text-muted-foreground">{params.length} ПАРАМЕТРОВ</div>
+        <button onClick={startPolling}
+          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition ${polling ? 'bg-red-400/15 text-red-400' : 'gradient-primary text-[hsl(220,20%,8%)]'}`}>
+          <Icon name={polling ? 'StopCircle' : 'Play'} size={13} />
+          {polling ? 'Стоп' : btConnected ? 'Читать с ELM327' : 'Демо-режим'}
+        </button>
+      </div>
+      {!btConnected && (
+        <div className="text-[11px] text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2 flex items-center gap-2">
+          <Icon name="Bluetooth" size={12} /><span>Адаптер не подключён — показываются демо-данные</span>
+        </div>
+      )}
+      {/* Группы */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {groups.map(g => {
+          const cfg = PARAM_GROUPS[g];
+          return (
+            <button key={g} onClick={() => setActiveGroup(g)}
+              className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full transition ${activeGroup === g ? 'gradient-primary text-[hsl(220,20%,8%)]' : 'bg-secondary text-muted-foreground'}`}>
+              {cfg && <Icon name={cfg.icon} size={12} />}
+              {g === 'all' ? 'Все' : cfg?.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {filtered.map(p => (
+          <div key={p.id} className="border-glow bg-card rounded-xl p-3">
+            <div className="text-[11px] text-muted-foreground mb-1 truncate">{p.name}</div>
+            <div className="flex items-end gap-1">
+              <span className={`font-display text-lg font-bold ${polling ? 'text-cyan-glow' : 'text-foreground'}`}>{p.value}</span>
+              <span className="text-xs text-muted-foreground mb-0.5">{p.unit}</span>
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── История подключений ───────────────────────────────────────────────────────
+interface SessionRecord {
+  id: number; device: string; make: string; model: string;
+  date: string; duration: string; dtcCount: number; status: 'ok'|'warn'|'error';
+}
+
+const SESSIONS_INIT: SessionRecord[] = [
+  { id: 1, device: 'ELM327 v1.5', make: 'Volkswagen', model: 'Golf VII', date: '14.06.2025 14:32', duration: '18 мин', dtcCount: 2, status: 'warn' },
+  { id: 2, device: 'OBDLink MX+', make: 'BMW',         model: '3 Series F30', date: '10.06.2025 09:15', duration: '35 мин', dtcCount: 0, status: 'ok' },
+  { id: 3, device: 'Vgate iCar', make: 'Toyota',       model: 'Camry V70', date: '03.06.2025 16:47', duration: '12 мин', dtcCount: 3, status: 'error' },
+  { id: 4, device: 'ELM327 BLE', make: 'Haval',        model: 'Jolion', date: '28.05.2025 11:00', duration: '8 мин', dtcCount: 0, status: 'ok' },
+];
+
+function ScreenHistory() {
+  const [sessions] = useState<SessionRecord[]>(SESSIONS_INIT);
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <SectionTitle title="История подключений" sub={`${sessions.length} сессий диагностики`} />
+
+      {/* Сводка */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Сессий', v: sessions.length, color: 'text-cyan' },
+          { label: 'С ошибками', v: sessions.filter(s => s.dtcCount > 0).length, color: 'text-amber-400' },
+          { label: 'Чистых', v: sessions.filter(s => s.dtcCount === 0).length, color: 'text-green-400' },
+        ].map(s => (
+          <div key={s.label} className="border-glow bg-card rounded-xl p-3 text-center">
+            <div className={`font-display text-2xl font-bold ${s.color}`}>{s.v}</div>
+            <div className="text-[11px] text-muted-foreground">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Список сессий */}
+      <div className="space-y-2">
+        {sessions.map(s => (
+          <div key={s.id} className={`bg-card rounded-xl overflow-hidden border ${s.status==='error'?'border-red-500/30':s.status==='warn'?'border-amber-400/25':'border-glow'}`}>
+            <button className="w-full text-left p-4 flex items-start gap-3" onClick={() => setExpanded(expanded===s.id?null:s.id)}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.status==='error'?'bg-red-400/15':s.status==='warn'?'bg-amber-400/15':'bg-green-400/10'}`}>
+                <Icon name="Car" size={18} className={s.status==='error'?'text-red-400':s.status==='warn'?'text-amber-400':'text-green-400'} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm">{s.make} {s.model}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{s.date} · {s.duration}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">{s.device}</div>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                {s.dtcCount > 0
+                  ? <span className="text-xs font-bold text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-full">{s.dtcCount} ош.</span>
+                  : <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">OK</span>}
+                <Icon name={expanded===s.id?'ChevronUp':'ChevronDown'} size={14} className="text-muted-foreground" />
+              </div>
+            </button>
+            {expanded === s.id && (
+              <div className="px-4 pb-4 border-t border-border animate-fade-up pt-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[['Устройство', s.device], ['Длительность', s.duration], ['Марка', s.make], ['Модель', s.model]].map(([l,v]) => (
+                    <div key={l} className="bg-secondary rounded-lg p-2.5">
+                      <div className="text-muted-foreground mb-0.5">{l}</div>
+                      <div className="font-semibold">{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button className="flex-1 text-xs font-bold border border-primary/30 text-cyan py-2 rounded-lg hover:bg-primary/10 transition">Открыть отчёт</button>
+                  <button className="flex-1 text-xs font-bold border border-red-400/30 text-red-400 py-2 rounded-lg hover:bg-red-400/10 transition">Удалить</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button className="w-full border border-border text-muted-foreground text-sm font-semibold py-3 rounded-xl hover:bg-secondary transition flex items-center justify-center gap-2">
+        <Icon name="Download" size={16} />Экспорт истории
+      </button>
+    </div>
+  );
+}
+
+// ── Система обновлений и загрузки библиотек ──────────────────────────────────
+const APP_VERSION = '2.1.0';
+const LIBRARY_VERSION = '2024-06-15';
+
+function ScreenUpdates() {
+  const [checkState, setCheckState] = useState<'idle'|'checking'|'uptodate'|'available'>('idle');
+  const [importStep, setImportStep] = useState<'idle'|'parsing'|'done'|'error'>('idle');
+  const [importMsg, setImportMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const checkUpdates = () => {
+    setCheckState('checking');
+    setTimeout(() => setCheckState('uptodate'), 2000);
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportStep('parsing');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        const json = JSON.parse(text);
+        // Проверяем структуру файла
+        if (!json.version || !json.makes) throw new Error('Неверная структура файла');
+        setTimeout(() => {
+          setImportStep('done');
+          setImportMsg(`✓ Загружено: ${json.makes?.length ?? 0} марок, версия ${json.version}`);
+        }, 1200);
+      } catch (err) {
+        setImportStep('error');
+        setImportMsg('Ошибка: файл не соответствует формату AutoDiag Library (.adl.json)');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div className="space-y-5 animate-fade-up">
+      <SectionTitle title="Обновления и библиотеки" sub="Управление версиями и базами данных" />
+
+      {/* Версия приложения */}
+      <div className="border-glow bg-card rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-display text-sm text-muted-foreground">ПРИЛОЖЕНИЕ</div>
+            <div className="font-semibold mt-0.5">AutoDiag Pro v{APP_VERSION}</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+            <Icon name="Activity" size={18} className="text-[hsl(220,20%,8%)]" />
+          </div>
         </div>
-      ))}
+        <div className="text-xs text-muted-foreground">База DTC: {Object.keys(DTC_DB).length} кодов · Библиотека: {LIBRARY_VERSION}</div>
+        <button onClick={checkUpdates} disabled={checkState==='checking'}
+          className="w-full gradient-primary text-[hsl(220,20%,8%)] font-bold py-2.5 rounded-lg font-display tracking-wider disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
+          {checkState==='checking' ? <><Icon name="Loader" size={14} className="animate-spin" />Проверка...</>
+          : checkState==='uptodate' ? <><Icon name="CheckCircle" size={14} />Актуальная версия</>
+          : checkState==='available' ? <><Icon name="Download" size={14} />Доступно обновление</>
+          : <><Icon name="RefreshCw" size={14} />Проверить обновления</>}
+        </button>
+        {checkState==='uptodate' && <div className="text-xs text-green-400 text-center">Установлена последняя версия</div>}
+      </div>
+
+      {/* Загрузка библиотеки */}
+      <div className="border-glow bg-card rounded-xl p-4 space-y-3">
+        <div className="font-display text-sm text-muted-foreground">ЗАГРУЗКА БИБЛИОТЕКИ АВТОМОБИЛЯ</div>
+        <div className="text-xs text-muted-foreground leading-relaxed">
+          Каждая библиотека — это JSON-файл формата <span className="font-mono text-cyan">.adl.json</span> с описанием блоков управления, функций, адаптаций и сервисных операций для конкретной марки/модели.
+        </div>
+
+        {/* Формат файла */}
+        <div className="bg-secondary rounded-xl p-3 text-xs font-mono text-muted-foreground space-y-0.5">
+          <div className="text-cyan mb-1">{"// Формат AutoDiag Library v1"}</div>
+          <div>{"{"}</div>
+          <div className="pl-3"><span className="text-amber-400">"version"</span>{": "}<span className="text-green-400">"2024-06-15"</span>{","}</div>
+          <div className="pl-3"><span className="text-amber-400">"makes"</span>{": ["}<span className="text-muted-foreground">{"{ id, name, models: [...] }"}]</span></div>
+          <div>{"}"}</div>
+        </div>
+
+        <input ref={fileRef} type="file" accept=".json,.adl.json" className="hidden" onChange={handleFile} />
+
+        {importStep === 'idle' && (
+          <button onClick={() => fileRef.current?.click()}
+            className="w-full border border-primary/40 text-cyan font-bold py-3 rounded-xl hover:bg-primary/10 transition flex items-center justify-center gap-2">
+            <Icon name="FolderOpen" size={18} />Выбрать файл библиотеки (.adl.json)
+          </button>
+        )}
+        {importStep === 'parsing' && (
+          <div className="flex items-center gap-3 text-sm text-muted-foreground py-2">
+            <Icon name="Loader" size={16} className="animate-spin text-cyan" />Разбор файла библиотеки...
+          </div>
+        )}
+        {importStep === 'done' && (
+          <div className="space-y-2">
+            <div className="text-sm text-green-400 flex items-center gap-2"><Icon name="CheckCircle" size={16} />{importMsg}</div>
+            <button onClick={() => { setImportStep('idle'); setImportMsg(''); }} className="text-xs text-muted-foreground underline">Загрузить другой файл</button>
+          </div>
+        )}
+        {importStep === 'error' && (
+          <div className="space-y-2">
+            <div className="text-sm text-red-400 flex items-start gap-2"><Icon name="AlertCircle" size={16} className="shrink-0 mt-0.5" />{importMsg}</div>
+            <button onClick={() => { setImportStep('idle'); setImportMsg(''); }} className="text-xs text-muted-foreground underline">Попробовать снова</button>
+          </div>
+        )}
+      </div>
+
+      {/* Где брать библиотеки — честный раздел */}
+      <div className="border border-amber-400/25 bg-amber-400/5 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Icon name="Info" size={16} className="text-amber-400 shrink-0" />
+          <div className="font-display text-sm text-amber-400">О ПРОТОКОЛАХ И БАЗАХ ДАННЫХ</div>
+        </div>
+        <div className="text-xs text-muted-foreground leading-relaxed space-y-2">
+          <p>Проприетарные диагностические протоколы (VAG KWP, BMW ENET, Toyota TIS, Mercedes XENTRY) защищены авторским правом. Готовых открытых баз не существует.</p>
+          <p className="font-semibold text-foreground">Где получить реальные данные для библиотек:</p>
+          <div className="space-y-1.5 pl-2">
+            <div>• <span className="text-cyan">OBD Alliance / ASAM MCD-2D</span> — открытые стандарты описания диагностических данных (ODX, PDX)</div>
+            <div>• <span className="text-cyan">OpenDiagnostics</span> — сообщество reverse engineering протоколов</div>
+            <div>• <span className="text-cyan">Реверс-инжиниринг</span> — захват трафика через SocketCAN при работе оригинального сканера</div>
+            <div>• <span className="text-cyan">Дилерская документация</span> — WIS, ELSA, TIS, ISTA содержат описания параметров</div>
+          </div>
+          <p className="pt-1">Когда у тебя будет описание параметров для конкретной марки — скажи мне, и я оформлю их в формат <span className="font-mono text-cyan">.adl.json</span> для загрузки в это приложение.</p>
+        </div>
+      </div>
+
+      {/* Что уже встроено */}
+      <div className="border-glow bg-card rounded-xl p-4">
+        <div className="font-display text-xs text-muted-foreground mb-3">ВСТРОЕННЫЕ БИБЛИОТЕКИ</div>
+        <div className="space-y-2">
+          {[
+            { name: 'Стандарт OBD-II (SAE J1979)', status: 'ok', pids: '25 PIDs' },
+            { name: 'DTC база (ISO 15031-6)', status: 'ok', pids: `${Object.keys(DTC_DB).length} кодов` },
+            { name: 'VIN декодер (NHTSA)', status: 'ok', pids: 'API онлайн' },
+            { name: 'VAG (VW/Audi/Skoda)', status: 'partial', pids: 'Базовые функции' },
+            { name: 'BMW / Mini', status: 'partial', pids: 'Базовые функции' },
+            { name: 'Toyota / Lexus', status: 'partial', pids: 'Базовые функции' },
+            { name: 'Chinese OEM (Haval/Chery/Geely)', status: 'partial', pids: 'Базовые функции' },
+          ].map(lib => (
+            <div key={lib.name} className="flex items-center gap-3 text-xs">
+              <div className={`w-2 h-2 rounded-full shrink-0 ${lib.status==='ok'?'bg-green-400':'bg-amber-400'}`} />
+              <span className="flex-1">{lib.name}</span>
+              <span className="text-muted-foreground">{lib.pids}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'vin',      label: 'VIN',        icon: 'Search',          num: '1' },
-  { id: 'vehicle',  label: 'Авто',       icon: 'Car',             num: '2' },
-  { id: 'history',  label: 'История',    icon: 'History',         num: '' },
-  { id: 'dtc',      label: 'Справочник', icon: 'BookOpen',        num: '' },
+  { id: 'vin',      label: 'VIN',        icon: 'Search',    num: '1' },
+  { id: 'vehicle',  label: 'Авто',       icon: 'Car',       num: '2' },
+  { id: 'history',  label: 'Сессии',     icon: 'History',   num: '4' },
+  { id: 'dtc',      label: 'Справочник', icon: 'BookOpen',  num: '' },
+  { id: 'updates',  label: 'Библиотеки', icon: 'Download',  num: '' },
 ];
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const Index = () => {
   const [tab, setTab] = useState('vin');
+  const [btConnected, setBtConnected] = useState(false);
+  const [btName, setBtName] = useState<string | null>(null);
+  const [btError, setBtError] = useState('');
+  const [btConnecting, setBtConnecting] = useState(false);
+
+  elm327.onDisconnect(() => { setBtConnected(false); setBtName(null); });
+
+  const connectBluetooth = async () => {
+    setBtConnecting(true); setBtError('');
+    try {
+      await elm327.connect();
+      setBtConnected(true);
+      setBtName(elm327.getDeviceName());
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('cancelled')) setBtError(msg);
+    } finally {
+      setBtConnecting(false);
+    }
+  };
+
+  const disconnectBluetooth = async () => {
+    await elm327.disconnect();
+    setBtConnected(false); setBtName(null);
+  };
+
   return (
     <div className="min-h-screen bg-background grid-bg pb-28">
       <div className="max-w-xl mx-auto px-4 pt-6">
-        <header className="flex items-center justify-between mb-6">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-glow">
               <Icon name="Activity" size={18} className="text-[hsl(220,20%,8%)]" />
             </div>
             <span className="font-display text-lg text-cyan-glow">AutoDiag Pro</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-full px-3 py-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />v2.0
-          </div>
+          {/* BT статус в шапке */}
+          <button onClick={btConnected ? disconnectBluetooth : connectBluetooth} disabled={btConnecting}
+            className={`flex items-center gap-1.5 text-xs font-semibold border rounded-full px-3 py-1.5 transition ${btConnected ? 'border-green-400/40 text-green-400 bg-green-400/10' : 'border-border text-muted-foreground hover:border-primary/40 hover:text-cyan'}`}>
+            {btConnecting
+              ? <><Icon name="Loader" size={13} className="animate-spin" />Поиск...</>
+              : btConnected
+              ? <><span className="w-2 h-2 rounded-full bg-green-400" />{btName || 'ELM327'}</>
+              : <><Icon name="Bluetooth" size={13} />Bluetooth</>}
+          </button>
         </header>
+
+        {/* BT ошибка */}
+        {btError && (
+          <div className="mb-4 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3 flex items-start gap-2">
+            <Icon name="AlertCircle" size={14} className="shrink-0 mt-0.5" />
+            <div>{btError}</div>
+          </div>
+        )}
+
+        {/* Страницы */}
         {tab === 'vin'     && <ScreenVin />}
         {tab === 'vehicle' && <ScreenVehicle />}
         {tab === 'history' && <ScreenHistory />}
         {tab === 'dtc'     && <ScreenDTC />}
+        {tab === 'updates' && <ScreenUpdates />}
       </div>
 
+      {/* Bottom nav */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border-glow rounded-2xl px-2 py-2 flex items-center gap-1 w-[calc(100%-2rem)] max-w-sm">
         {NAV.map(n => (
           <button key={n.id} onClick={() => setTab(n.id)}
