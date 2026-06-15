@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 250 60% 99%;
-    --foreground: 260 40% 14%;
+    --background: 222 40% 98%;
+    --foreground: 224 45% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 260 40% 14%;
+    --card-foreground: 224 45% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 40% 14%;
+    --popover-foreground: 224 45% 16%;
 
-    --primary: 265 85% 58%;
+    --primary: 231 60% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 24 95% 58%;
+    --secondary: 16 85% 60%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 260 30% 96%;
-    --muted-foreground: 260 15% 50%;
+    --muted: 222 28% 95%;
+    --muted-foreground: 224 14% 46%;
 
-    --accent: 160 84% 45%;
+    --accent: 172 58% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 260 30% 91%;
-    --input: 260 30% 91%;
-    --ring: 265 85% 58%;
+    --border: 222 28% 90%;
+    --input: 222 28% 90%;
+    --ring: 231 60% 48%;
 
     --radius: 1.2rem;
 
@@ -103,47 +103,46 @@
 
 @layer utilities {
   .font-display {
-    font-family: "Unbounded", sans-serif;
+    font-family: "Manrope", sans-serif;
+    letter-spacing: -0.02em;
   }
   .gradient-hero {
     background: linear-gradient(
       135deg,
-      hsl(265 85% 58%) 0%,
-      hsl(290 80% 55%) 40%,
-      hsl(24 95% 58%) 100%
+      hsl(231 64% 46%) 0%,
+      hsl(245 58% 52%) 55%,
+      hsl(262 52% 54%) 100%
     );
   }
   .gradient-mesh {
     background:
       radial-gradient(
-        circle at 15% 20%,
-        hsl(265 85% 58% / 0.25),
+        circle at 12% 18%,
+        hsl(231 60% 48% / 0.12),
+        transparent 42%
+      ),
+      radial-gradient(
+        circle at 88% 12%,
+        hsl(16 85% 60% / 0.1),
         transparent 40%
       ),
       radial-gradient(
-        circle at 85% 15%,
-        hsl(24 95% 58% / 0.22),
-        transparent 40%
-      ),
-      radial-gradient(
-        circle at 50% 90%,
-        hsl(160 84% 45% / 0.18),
+        circle at 50% 95%,
+        hsl(172 58% 40% / 0.08),
         transparent 45%
       );
   }
   .text-gradient {
-    background: linear-gradient(135deg, hsl(265 85% 58%), hsl(24 95% 58%));
+    background: linear-gradient(135deg, hsl(231 64% 48%), hsl(262 52% 54%));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
   }
   .shadow-pop {
-    box-shadow:
-      0 10px 0 -2px hsl(265 85% 48%),
-      0 18px 40px -10px hsl(265 85% 58% / 0.5);
+    box-shadow: 0 16px 40px -14px hsl(231 60% 40% / 0.45);
   }
   .shadow-soft {
-    box-shadow: 0 8px 30px -12px hsl(260 40% 30% / 0.25);
+    box-shadow: 0 8px 30px -14px hsl(224 45% 25% / 0.18);
   }
 }
 
@@ -194,4 +193,29 @@
 }
 .animate-pop-in {
   animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes msg-in {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-msg-in {
+  animation: msg-in 0.3s ease-out both;
+}
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
