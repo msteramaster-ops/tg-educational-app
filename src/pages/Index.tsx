@@ -49,17 +49,21 @@ interface DtcEntry { code: string; status: DtcStatus; count: number; lastSeen: s
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 function BackBtn({ onClick, label = 'Назад' }: { onClick: () => void; label?: string }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-4">
-      <Icon name="ChevronLeft" size={18} />{label}
+    <button onClick={onClick}
+      className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 active:scale-95">
+      <div className="w-7 h-7 rounded-xl bg-secondary flex items-center justify-center">
+        <Icon name="ChevronLeft" size={16} />
+      </div>
+      <span>{label}</span>
     </button>
   );
 }
 
 function SectionTitle({ title, sub }: { title: string; sub?: string }) {
   return (
-    <div className="mb-5">
-      <div className="font-display text-xl text-cyan-glow">{title}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="mb-6">
+      <h2 className="font-display text-2xl text-foreground leading-tight">{title}</h2>
+      {sub && <div className="text-sm text-muted-foreground mt-1">{sub}</div>}
     </div>
   );
 }
@@ -276,15 +280,17 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
 
   // ── Region ──
   if (step === 'region') return (
-    <div className="space-y-4 animate-fade-up">
-      <SectionTitle title="Выбор автомобиля" sub="Шаг 1 из 4 — Выберите регион" />
+    <div className="animate-fade-up space-y-5">
+      <SectionTitle title="Выбор автомобиля" sub="Выберите регион производителя" />
       <div className="grid grid-cols-2 gap-3">
-        {REGIONS.map(r => (
-          <button key={r.id} onClick={() => { setSel(s=>({...s, region: r.id})); setStep('make'); }}
-            className="border-glow bg-card rounded-xl p-5 text-left hover:bg-secondary transition">
-            <div className="text-3xl mb-2">{r.flag}</div>
-            <div className="font-semibold">{r.name}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
+        {REGIONS.map((r, i) => (
+          <button key={r.id}
+            onClick={() => { setSel(s=>({...s, region: r.id})); setStep('make'); }}
+            style={{ animationDelay: `${i * 50}ms` }}
+            className="animate-fade-up bg-card border border-white/5 rounded-2xl p-5 text-left active:scale-95 transition-all hover:border-white/10 hover:bg-secondary/60">
+            <div className="text-4xl mb-3">{r.flag}</div>
+            <div className="font-semibold text-foreground text-sm">{r.name}</div>
+            <div className="text-xs text-muted-foreground mt-1">
               {VEHICLE_DB.filter(m => m.region === r.id).length} марок
             </div>
           </button>
@@ -297,19 +303,22 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
   if (step === 'make') {
     const makes = VEHICLE_DB.filter(m => m.region === sel.region);
     return (
-      <div className="space-y-4 animate-fade-up">
+      <div className="animate-fade-up space-y-4">
         <BackBtn onClick={() => setStep('region')} />
-        <SectionTitle title="Выбор марки" sub="Шаг 2 из 4 — Выберите марку автомобиля" />
+        <SectionTitle title="Марка" sub="Выберите производителя" />
         <div className="space-y-2">
-          {makes.map(m => (
+          {makes.map((m, i) => (
             <button key={m.id} onClick={() => startLoad(m.id)}
-              className="w-full border-glow bg-card rounded-xl p-4 flex items-center gap-4 hover:bg-secondary transition text-left">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-2xl shrink-0">{m.logo}</div>
-              <div className="flex-1">
-                <div className="font-semibold">{m.name}</div>
-                <div className="text-xs text-muted-foreground">{m.models.length} моделей</div>
+              style={{ animationDelay: `${i * 30}ms` }}
+              className="animate-fade-up w-full bg-card border border-white/5 rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-all hover:border-white/10 hover:bg-secondary/60 text-left">
+              <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-2xl shrink-0 border border-white/5">
+                {m.logo}
               </div>
-              <Icon name="ChevronRight" size={18} className="text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-foreground">{m.name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{m.models.length} моделей</div>
+              </div>
+              <Icon name="ChevronRight" size={18} className="text-muted-foreground shrink-0" />
             </button>
           ))}
         </div>
@@ -319,43 +328,62 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
 
   // ── Loading ──
   if (step === 'loading') return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-fade-up">
-      <div className="w-20 h-20 rounded-full border-2 border-primary animate-pulse-glow flex items-center justify-center">
-        <Icon name="Database" size={32} className="text-cyan" />
-      </div>
-      <div className="text-center">
-        <div className="font-display text-lg text-cyan-glow mb-1">Загрузка библиотеки</div>
-        <div className="text-sm text-muted-foreground">{selectedMake?.name}</div>
-      </div>
-      <div className="w-64 space-y-2">
-        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-          <div className="h-full gradient-primary rounded-full transition-all duration-200" style={{ width: `${Math.min(loadProgress, 100)}%` }} />
+    <div className="flex flex-col items-center justify-center min-h-[65vh] animate-fade-up gap-8">
+      {/* Лого марки */}
+      <div className="relative">
+        <div className="w-24 h-24 rounded-3xl bg-card border border-white/8 flex items-center justify-center text-5xl shadow-card animate-scale-in">
+          {selectedMake?.logo}
         </div>
-        <div className="text-xs text-muted-foreground text-center">{Math.round(Math.min(loadProgress, 100))}%</div>
+        <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+          <Icon name="Loader2" size={14} className="text-white animate-spin" />
+        </div>
       </div>
-      <div className="text-xs text-muted-foreground space-y-1 text-center">
-        {loadProgress > 20 && <div className="animate-fade-up">✓ Загрузка моделей...</div>}
-        {loadProgress > 50 && <div className="animate-fade-up">✓ Загрузка блоков управления...</div>}
-        {loadProgress > 80 && <div className="animate-fade-up">✓ Загрузка специальных функций...</div>}
+      <div className="text-center space-y-1">
+        <div className="font-display text-xl text-foreground">{selectedMake?.name}</div>
+        <div className="text-sm text-muted-foreground">Загрузка данных...</div>
+      </div>
+      {/* Прогресс-бар */}
+      <div className="w-56 space-y-3">
+        <div className="h-1 bg-secondary rounded-full overflow-hidden">
+          <div className="h-full gradient-primary rounded-full transition-all duration-150"
+            style={{ width: `${Math.min(loadProgress, 100)}%` }} />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{loadProgress > 20 ? '✓ Модели' : '○ Модели'}</span>
+          <span>{loadProgress > 55 ? '✓ ЭБУ' : '○ ЭБУ'}</span>
+          <span>{loadProgress > 80 ? '✓ Функции' : '○ Функции'}</span>
+        </div>
       </div>
     </div>
   );
 
   // ── Model ──
   if (step === 'model') return (
-    <div className="space-y-4 animate-fade-up">
+    <div className="animate-fade-up space-y-4">
       <BackBtn onClick={() => setStep('make')} />
-      <SectionTitle title={`${selectedMake?.name} — Модель`} sub="Шаг 3 из 4" />
+      {/* Заголовок с маркой */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-2xl bg-card border border-white/8 flex items-center justify-center text-xl shrink-0">
+          {selectedMake?.logo}
+        </div>
+        <SectionTitle title={selectedMake?.name ?? ''} sub="Выберите модель" />
+      </div>
       <div className="space-y-2">
-        {selectedMake?.models.map(m => (
-          <button key={m.id} onClick={() => { setSel(s=>({...s, model: m.id})); setStep('year'); }}
-            className="w-full border-glow bg-card rounded-xl p-4 flex items-center gap-3 hover:bg-secondary transition text-left">
-            <Icon name="Car" size={20} className="text-cyan shrink-0" />
-            <div className="flex-1">
-              <div className="font-semibold">{m.name}</div>
-              <div className="text-xs text-muted-foreground">{m.years[0]}–{m.years[m.years.length-1]} · {m.ecus.length} блоков</div>
+        {selectedMake?.models.map((m, i) => (
+          <button key={m.id}
+            onClick={() => { setSel(s=>({...s, model: m.id})); setStep('year'); }}
+            style={{ animationDelay: `${i * 25}ms` }}
+            className="animate-fade-up w-full bg-card border border-white/5 rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-all hover:border-white/10 text-left">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Icon name="Car" size={17} className="text-blue-400" />
             </div>
-            <Icon name="ChevronRight" size={18} className="text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-foreground text-sm">{m.name}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {m.years[0]}–{m.years[m.years.length-1]} · {m.ecus.length} блоков ЭБУ
+              </div>
+            </div>
+            <Icon name="ChevronRight" size={16} className="text-muted-foreground shrink-0" />
           </button>
         ))}
       </div>
@@ -364,17 +392,23 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
 
   // ── Year ──
   if (step === 'year') return (
-    <div className="space-y-4 animate-fade-up">
+    <div className="animate-fade-up space-y-4">
       <BackBtn onClick={() => setStep('model')} />
-      <SectionTitle title="Год выпуска" sub="Шаг 4 из 4" />
-      <div className="grid grid-cols-3 gap-2">
-        {[...(selectedModel?.years || [])].reverse().map(y => (
-          <button key={y} onClick={() => {
-            setSel(s=>({...s, year: y}));
-            loadProtocolForSelection(sel.make, sel.model, y);
-            setStep('ecus');
-          }}
-            className={`border-glow bg-card rounded-xl py-3 text-center font-display font-bold hover:bg-secondary transition ${sel.year === y ? 'gradient-primary text-[hsl(220,20%,8%)]' : ''}`}>
+      <SectionTitle title="Год выпуска" sub={selectedModel?.name} />
+      <div className="grid grid-cols-4 gap-2">
+        {[...(selectedModel?.years || [])].reverse().map((y, i) => (
+          <button key={y}
+            onClick={() => {
+              setSel(s=>({...s, year: y}));
+              loadProtocolForSelection(sel.make, sel.model, y);
+              setStep('ecus');
+            }}
+            style={{ animationDelay: `${i * 15}ms` }}
+            className={`animate-fade-up rounded-2xl py-3 text-center text-sm font-semibold transition-all active:scale-90 ${
+              sel.year === y
+                ? 'gradient-primary text-white shadow-glow'
+                : 'bg-card border border-white/5 text-foreground hover:border-white/10 hover:bg-secondary/60'
+            }`}>
             {y}
           </button>
         ))}
@@ -390,135 +424,139 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
       <div className="space-y-4 animate-fade-up">
         <BackBtn onClick={() => setStep('year')} />
         {/* Авто-шапка */}
-        <div className="gradient-primary rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">{selectedMake?.logo}</div>
-          <div className="text-[hsl(220,20%,8%)] flex-1">
-            <div className="font-display font-bold text-lg leading-tight">{selectedMake?.name} {selectedModel?.name}</div>
-            <div className="text-sm font-semibold opacity-80">{sel.year} · {activeEcus.length} блоков</div>
+        <div className="relative overflow-hidden rounded-3xl p-5 gradient-primary">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8 blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-4 relative">
+            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shrink-0 border border-white/20">
+              {selectedMake?.logo}
+            </div>
+            <div className="text-white flex-1 min-w-0">
+              <div className="font-display text-xl font-bold leading-tight truncate">
+                {selectedMake?.name} {selectedModel?.name}
+              </div>
+              <div className="text-sm opacity-80 mt-0.5">{sel.year} · {activeEcus.length} блоков ЭБУ</div>
+            </div>
           </div>
+          {/* Статус протокола прямо в шапке */}
+          {protocolStatus === 'found' && (
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-white/80 relative">
+              <Icon name="FileCheck" size={12} className="shrink-0" />
+              Протокол из файла · {activeEcus.length} блоков
+            </div>
+          )}
+          {protocolStatus === 'loading' && (
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-white/70 relative">
+              <Icon name="Loader2" size={12} className="animate-spin shrink-0" />
+              Ищем протокол...
+            </div>
+          )}
+          {protocolStatus === 'not_found' && (
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-white/60 relative">
+              <Icon name="Database" size={12} className="shrink-0" />
+              Встроенная база данных
+            </div>
+          )}
         </div>
 
-        {/* Статус протокола */}
-        {protocolStatus === 'loading' && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-xl p-3">
-            <Icon name="Loader2" size={14} className="animate-spin shrink-0" />
-            Ищем протокол в папке {folderPath}...
+        {/* Быстрое сканирование */}
+        <div className="bg-card border border-white/5 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-sm font-semibold text-foreground">Быстрое сканирование</div>
+              <div className="text-xs text-muted-foreground">Все блоки управления сразу</div>
+            </div>
+            {!scanning && scanResults.length === 0 && (
+              <button onClick={startScan}
+                className="px-4 py-2 gradient-primary text-white text-xs font-semibold rounded-xl active:scale-95 transition-all shadow-glow">
+                Сканировать
+              </button>
+            )}
+            {scanResults.length > 0 && !scanning && (
+              <button onClick={() => { setScanning(false); setScanResults([]); }}
+                className="px-3 py-1.5 bg-secondary text-muted-foreground text-xs rounded-xl active:scale-95 transition-all">
+                Сброс
+              </button>
+            )}
           </div>
-        )}
-        {protocolStatus === 'found' && (
-          <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/10 rounded-xl p-3 border border-green-400/20">
-            <Icon name="FileCheck" size={14} className="shrink-0" />
-            Протокол загружен из файла · {activeEcus.length} блоков
-          </div>
-        )}
-        {protocolStatus === 'not_found' && files.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/10 rounded-xl p-3 border border-amber-400/20">
-            <Icon name="FolderSearch" size={14} className="shrink-0" />
-            Протокол для этого авто не найден в папке. Используется встроенная БД.
-          </div>
-        )}
-        {protocolStatus === 'not_found' && files.length === 0 && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-xl p-3">
-            <Icon name="Database" size={14} className="shrink-0" />
-            Папка пуста. Используется встроенная БД.
-          </div>
-        )}
-
-        {/* Кнопка 3: Быстрое тестирование */}
-        <div className="border border-primary/30 bg-primary/5 rounded-xl p-4">
-          <div className="font-display text-sm text-cyan mb-2">⚡ БЫСТРОЕ ТЕСТИРОВАНИЕ</div>
-          <div className="text-xs text-muted-foreground mb-3">Сканирование всех блоков управления одновременно</div>
-          {!scanning && scanResults.length === 0 && (
-            <button onClick={startScan} className="w-full gradient-primary text-[hsl(220,20%,8%)] font-bold py-2.5 rounded-lg font-display tracking-wider hover:opacity-90 transition">
-              СКАНИРОВАТЬ ВСЕ БЛОКИ
-            </button>
-          )}
           {(scanning || scanResults.length > 0) && (
-            <div className="space-y-1.5">
+            <div className="space-y-2 mt-1">
               {scanResults.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs animate-fade-up">
-                  <Icon name="CheckCircle" size={14} className="text-green-400 shrink-0" />
-                  <span className="flex-1 text-muted-foreground truncate">{r.ecu}</span>
-                  {r.faults.length > 0 ? (
-                    <span className="text-amber-400 font-bold">{r.faults.length} ош.</span>
-                  ) : (
-                    <span className="text-green-400 font-bold">OK</span>
-                  )}
+                <div key={i} className="flex items-center gap-2.5 animate-fade-up">
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.faults.length > 0 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                  <span className="flex-1 text-xs text-foreground truncate">{r.ecu}</span>
+                  {r.faults.length > 0
+                    ? <span className="text-xs font-semibold text-amber-400">{r.faults.length} ошиб.</span>
+                    : <span className="text-xs font-semibold text-emerald-400">OK</span>}
                 </div>
               ))}
               {scanning && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Icon name="Loader" size={14} className="animate-spin shrink-0" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                  <Icon name="Loader2" size={12} className="animate-spin shrink-0" />
                   Сканирование...
                 </div>
               )}
               {!scanning && scanResults.length > 0 && (
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                  <span className="text-xs text-muted-foreground">Итого: {totalFaults} ошибок, {activeFaults} активных</span>
-                  <button onClick={() => { setScanning(false); setScanResults([]); }} className="text-xs text-cyan">Сброс</button>
+                <div className="flex gap-4 pt-2 mt-1 border-t border-white/5">
+                  <div className="text-xs"><span className="font-semibold text-amber-400">{totalFaults}</span> <span className="text-muted-foreground">ошибок</span></div>
+                  <div className="text-xs"><span className="font-semibold text-red-400">{activeFaults}</span> <span className="text-muted-foreground">активных</span></div>
+                  <div className="text-xs"><span className="font-semibold text-blue-400">{activeEcus.length}</span> <span className="text-muted-foreground">блоков</span></div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Итог ошибок */}
-        {totalFaults > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Всего ошибок', v: totalFaults, color: 'text-amber-400' },
-              { label: 'Активных', v: activeFaults, color: 'text-red-400' },
-              { label: 'Блоков', v: selectedModel?.ecus.length, color: 'text-cyan' },
-            ].map(s => (
-              <div key={s.label} className="border-glow bg-card rounded-xl p-3 text-center">
-                <div className={`font-display text-2xl font-bold ${s.color}`}>{s.v}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
-              </div>
-            ))}
+        {/* Блоки управления (ЭБУ) */}
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1 mb-1">
+            Блоки управления
           </div>
-        )}
-
-        {/* Блоки управления */}
-        <div>
-          <div className="font-display text-xs text-muted-foreground mb-2">БЛОКИ УПРАВЛЕНИЯ — НАЖМИТЕ ДЛЯ ПОДКЛЮЧЕНИЯ</div>
-          <div className="space-y-2">
-            {activeEcus.map(ecu => {
-              const faults = MOCK_FAULTS[ecu.id] || [];
-              const active = faults.filter(f => f.status === 'active').length;
-              return (
-                <button key={ecu.id} onClick={() => { setSel(s=>({...s, ecu})); setActiveTab('dtc'); setStep('ecu_detail'); }}
-                  className={`w-full text-left border rounded-xl p-4 flex items-center gap-3 hover:bg-secondary transition ${faults.length > 0 ? 'border-amber-400/30 bg-card' : 'border-glow bg-card'}`}>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${faults.length > 0 ? 'bg-amber-400/15' : 'bg-secondary'}`}>
-                    <Icon name="Cpu" size={18} className={faults.length > 0 ? 'text-amber-400' : 'text-muted-foreground'} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{ecu.name}</div>
-                    <div className="text-[11px] text-muted-foreground font-mono">{ecu.address} · {ecu.protocol}</div>
-                  </div>
-                  {faults.length > 0 ? (
-                    <div className="text-right shrink-0">
+          {activeEcus.map((ecu, i) => {
+            const faults = MOCK_FAULTS[ecu.id] || [];
+            const active = faults.filter(f => f.status === 'active').length;
+            const hasError = faults.length > 0;
+            return (
+              <button key={ecu.id}
+                onClick={() => { setSel(s=>({...s, ecu})); setActiveTab('dtc'); setStep('ecu_detail'); }}
+                style={{ animationDelay: `${i * 25}ms` }}
+                className={`animate-fade-up w-full text-left rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-all ${
+                  hasError
+                    ? 'bg-amber-500/6 border border-amber-500/25 hover:bg-amber-500/10'
+                    : 'bg-card border border-white/5 hover:border-white/10 hover:bg-secondary/60'
+                }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  hasError ? 'bg-amber-500/15' : 'bg-secondary'
+                }`}>
+                  <Icon name="Cpu" size={18} className={hasError ? 'text-amber-400' : 'text-muted-foreground'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-foreground truncate">{ecu.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono mt-0.5">{ecu.address} · {ecu.protocol}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {hasError ? (
+                    <div className="text-right">
                       <div className="text-xs font-bold text-amber-400">{faults.length} ош.</div>
                       {active > 0 && <div className="text-[11px] text-red-400">{active} акт.</div>}
                     </div>
                   ) : (
-                    <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full shrink-0">OK</span>
+                    <span className="text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">OK</span>
                   )}
-                  <Icon name="ChevronRight" size={16} className="text-muted-foreground ml-1 shrink-0" />
-                </button>
-              );
-            })}
-          </div>
+                  <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Управление папкой протоколов */}
-        <div className="border border-border rounded-xl p-3 flex items-center gap-3">
-          <Icon name="FolderOpen" size={16} className="text-muted-foreground shrink-0" />
+        {/* Подвал — папка протоколов */}
+        <div className="flex items-center gap-3 px-1 py-2">
+          <Icon name="FolderOpen" size={14} className="text-muted-foreground shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground truncate">{folderPath || 'Папка не выбрана'}</div>
-            <div className="text-[11px] text-muted-foreground">{files.length} протоколов</div>
+            <div className="text-xs text-muted-foreground truncate">{files.length} протоколов · {folderPath?.split('/').pop()}</div>
           </div>
-          <button onClick={resetFolder} className="text-xs text-cyan-400 hover:text-cyan-300 transition shrink-0">
-            Сменить
+          <button onClick={resetFolder} className="text-xs text-blue-400 hover:text-blue-300 transition shrink-0">
+            Сменить папку
           </button>
         </div>
       </div>
@@ -528,36 +566,44 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
   // ── ECU Detail ──
   if (step === 'ecu_detail' && sel.ecu) {
     const TABS = [
-      { id: 'dtc',     label: 'DTC',           icon: 'AlertTriangle' },
-      { id: 'live',    label: 'Поток',          icon: 'Activity' },
-      { id: 'special', label: 'Специальные',    icon: 'Wrench' },
-      { id: 'service', label: 'Сервис',         icon: 'Settings' },
+      { id: 'dtc',     label: 'DTC',        icon: 'AlertTriangle' },
+      { id: 'live',    label: 'Поток',       icon: 'Activity' },
+      { id: 'special', label: 'Функции',     icon: 'Wrench' },
+      { id: 'service', label: 'Сервис',      icon: 'Settings' },
     ] as const;
 
     return (
       <div className="space-y-4 animate-fade-up">
-        <BackBtn onClick={() => setStep('ecus')} label="К блокам управления" />
-        {/* Заголовок блока */}
-        <div className="border-glow bg-card rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-            <Icon name="Cpu" size={22} className="text-cyan" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold truncate">{sel.ecu.name}</div>
-            <div className="text-xs text-muted-foreground font-mono">{sel.ecu.address} · {sel.ecu.protocol}</div>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-green-400 font-semibold shrink-0">
-            <span className="w-2 h-2 rounded-full bg-green-400" />
-            Подключён
+        <BackBtn onClick={() => setStep('ecus')} label="Блоки управления" />
+
+        {/* Шапка ЭБУ */}
+        <div className="bg-card border border-white/5 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/12 border border-blue-500/20 flex items-center justify-center shrink-0">
+              <Icon name="Cpu" size={22} className="text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-foreground truncate leading-tight">{sel.ecu.name}</div>
+              <div className="text-xs text-muted-foreground font-mono mt-0.5">{sel.ecu.address} · {sel.ecu.protocol}</div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-emerald-400 font-medium">Активен</span>
+            </div>
           </div>
         </div>
 
         {/* Табы */}
-        <div className="flex gap-1.5 overflow-x-auto">
+        <div className="grid grid-cols-4 gap-1.5 bg-secondary/50 rounded-2xl p-1">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition ${activeTab === t.id ? 'gradient-primary text-[hsl(220,20%,8%)]' : 'bg-secondary text-muted-foreground'}`}>
-              <Icon name={t.icon} size={14} />{t.label}
+              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all ${
+                activeTab === t.id
+                  ? 'bg-card shadow-card text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}>
+              <Icon name={t.icon} size={15} />
+              <span className="text-[10px] font-semibold">{t.label}</span>
             </button>
           ))}
         </div>
@@ -565,9 +611,10 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
         {/* Таб DTC */}
         {activeTab === 'dtc' && (
           <div className="space-y-3 animate-fade-up">
+            {/* Кнопки чтения/сброса */}
             <div className="flex items-center justify-between">
-              <div className="font-display text-xs text-muted-foreground">
-                КОДЫ НЕИСПРАВНОСТЕЙ ({(realDtc !== null ? realDtc.length : ecuFaults.length)})
+              <div className="text-xs font-semibold text-muted-foreground">
+                Коды неисправностей · {realDtc !== null ? realDtc.length : ecuFaults.length}
               </div>
               <div className="flex gap-2">
                 <button
@@ -577,9 +624,11 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
                     try { const codes = await elm327.readDTC(); setRealDtc(codes); }
                     finally { setDtcLoading(false); }
                   }}
-                  disabled={dtcLoading}
-                  className={`text-xs font-bold border px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${btConnected ? 'border-primary/30 text-cyan hover:bg-primary/10' : 'border-border text-muted-foreground cursor-not-allowed'}`}>
-                  <Icon name={dtcLoading ? 'Loader' : 'RefreshCw'} size={12} className={dtcLoading ? 'animate-spin' : ''} />
+                  disabled={dtcLoading || !btConnected}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 transition-all active:scale-95 ${
+                    btConnected ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' : 'bg-secondary text-muted-foreground opacity-50'
+                  }`}>
+                  <Icon name={dtcLoading ? 'Loader2' : 'RefreshCw'} size={12} className={dtcLoading ? 'animate-spin' : ''} />
                   {dtcLoading ? 'Чтение...' : 'Читать'}
                 </button>
                 <button
@@ -589,29 +638,42 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
                     try { await elm327.clearDTC(); setRealDtc([]); }
                     finally { setDtcClearing(false); }
                   }}
-                  disabled={dtcClearing}
-                  className={`text-xs font-bold border px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${btConnected ? 'border-red-400/30 text-red-400 hover:bg-red-400/10' : 'border-border text-muted-foreground cursor-not-allowed'}`}>
-                  <Icon name={dtcClearing ? 'Loader' : 'Trash2'} size={12} className={dtcClearing ? 'animate-spin' : ''} />
+                  disabled={dtcClearing || !btConnected}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 transition-all active:scale-95 ${
+                    btConnected ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-secondary text-muted-foreground opacity-50'
+                  }`}>
+                  <Icon name={dtcClearing ? 'Loader2' : 'Trash2'} size={12} className={dtcClearing ? 'animate-spin' : ''} />
                   {dtcClearing ? 'Сброс...' : 'Удалить'}
                 </button>
               </div>
             </div>
             {!btConnected && (
-              <div className="text-[11px] text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2 flex items-center gap-2">
-                <Icon name="Bluetooth" size={12} />Подключите адаптер ELM327 для чтения реальных ошибок
+              <div className="flex items-center gap-2.5 text-xs text-amber-400 bg-amber-500/8 border border-amber-500/20 rounded-2xl px-4 py-3">
+                <Icon name="Bluetooth" size={14} className="shrink-0" />
+                Подключите адаптер ELM327 для чтения реальных ошибок
               </div>
             )}
-            {/* Реальные коды от ELM327 */}
             {realDtc !== null ? (
               realDtc.length === 0
-                ? <div className="border-glow bg-card rounded-xl p-8 text-center"><Icon name="CheckCircle" size={32} className="text-green-400 mx-auto mb-2" /><div className="text-sm font-semibold text-green-400">Ошибок не обнаружено</div></div>
+                ? <div className="bg-card border border-white/5 rounded-2xl p-8 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                      <Icon name="CheckCircle" size={28} className="text-emerald-400" />
+                    </div>
+                    <div className="font-semibold text-emerald-400">Ошибок нет</div>
+                    <div className="text-xs text-muted-foreground mt-1">Блок работает исправно</div>
+                  </div>
                 : realDtc.map(code => (
                     <DtcCard key={code} entry={{ code, status: 'active', count: 1, lastSeen: 'только что' }} />
                   ))
             ) : (
-              /* Демо-данные */
               ecuFaults.length === 0
-                ? <div className="border-glow bg-card rounded-xl p-8 text-center"><Icon name="CheckCircle" size={32} className="text-green-400 mx-auto mb-2" /><div className="text-sm font-semibold text-green-400">Ошибок не обнаружено</div></div>
+                ? <div className="bg-card border border-white/5 rounded-2xl p-8 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                      <Icon name="CheckCircle" size={28} className="text-emerald-400" />
+                    </div>
+                    <div className="font-semibold text-emerald-400">Ошибок нет</div>
+                    <div className="text-xs text-muted-foreground mt-1">Блок работает исправно</div>
+                  </div>
                 : ecuFaults.map(f => <DtcCard key={f.code} entry={f} />)
             )}
           </div>
@@ -620,28 +682,39 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
         {/* Таб Live Data */}
         {activeTab === 'live' && <LiveDataTab btConnected={elm327.isConnected()} />}
 
-        {/* Таб Специальные */}
+        {/* Таб Функции */}
         {activeTab === 'special' && (
           <div className="space-y-3 animate-fade-up">
-            <div className="font-display text-xs text-muted-foreground mb-2">СПЕЦИАЛЬНЫЕ ФУНКЦИИ</div>
-            {fnGroups.special.length + fnGroups.adaptation.length + fnGroups.activation.length === 0
-              ? <div className="text-sm text-muted-foreground text-center py-8">Нет специальных функций для данного блока</div>
-              : null
-            }
-            {fnGroups.activation.length > 0 && <FuncGroup label="Активация исполнительных элементов" fns={fnGroups.activation} color="text-amber-400" />}
-            {fnGroups.adaptation.length > 0 && <FuncGroup label="Адаптации и обучения" fns={fnGroups.adaptation} color="text-cyan" />}
-            {fnGroups.special.length > 0 && <FuncGroup label="Специальные функции" fns={fnGroups.special} color="text-purple-400" />}
+            {fnGroups.special.length + fnGroups.adaptation.length + fnGroups.activation.length === 0 ? (
+              <div className="bg-card border border-white/5 rounded-2xl p-8 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Icon name="Wrench" size={22} className="text-muted-foreground" />
+                </div>
+                <div className="text-sm text-muted-foreground">Нет специальных функций для этого блока</div>
+              </div>
+            ) : (
+              <>
+                {fnGroups.activation.length > 0 && <FuncGroup label="Активация" icon="Zap" fns={fnGroups.activation} accent="amber" />}
+                {fnGroups.adaptation.length > 0 && <FuncGroup label="Адаптации" icon="SlidersHorizontal" fns={fnGroups.adaptation} accent="blue" />}
+                {fnGroups.special.length > 0 && <FuncGroup label="Специальные" icon="Cpu" fns={fnGroups.special} accent="violet" />}
+              </>
+            )}
           </div>
         )}
 
         {/* Таб Сервис */}
         {activeTab === 'service' && (
           <div className="space-y-3 animate-fade-up">
-            <div className="font-display text-xs text-muted-foreground mb-2">СЕРВИСНЫЕ ФУНКЦИИ</div>
-            {fnGroups.service.length === 0
-              ? <div className="text-sm text-muted-foreground text-center py-8">Нет сервисных функций для данного блока</div>
-              : <FuncGroup label="Сброс и обслуживание" fns={fnGroups.service} color="text-green-400" />
-            }
+            {fnGroups.service.length === 0 ? (
+              <div className="bg-card border border-white/5 rounded-2xl p-8 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Icon name="Settings" size={22} className="text-muted-foreground" />
+                </div>
+                <div className="text-sm text-muted-foreground">Нет сервисных функций для этого блока</div>
+              </div>
+            ) : (
+              <FuncGroup label="Сервис и сброс" icon="Settings" fns={fnGroups.service} accent="emerald" />
+            )}
           </div>
         )}
       </div>
@@ -651,37 +724,60 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
   return null;
 }
 
-function FuncGroup({ label, fns, color }: { label: string; fns: EcuFunction[]; color: string }) {
+type AccentColor = 'blue' | 'violet' | 'amber' | 'emerald';
+const ACCENT_MAP: Record<AccentColor, { text: string; bg: string; btn: string }> = {
+  blue:    { text: 'text-blue-400',    bg: 'bg-blue-500/10',    btn: 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' },
+  violet:  { text: 'text-violet-400',  bg: 'bg-violet-500/10',  btn: 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25' },
+  amber:   { text: 'text-amber-400',   bg: 'bg-amber-500/10',   btn: 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' },
+  emerald: { text: 'text-emerald-400', bg: 'bg-emerald-500/10', btn: 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25' },
+};
+
+function FuncGroup({ label, icon, fns, accent }: { label: string; icon: string; fns: EcuFunction[]; accent: AccentColor }) {
   const [running, setRunning] = useState<string | null>(null);
   const [done, setDone] = useState<string[]>([]);
+  const a = ACCENT_MAP[accent];
   const runFn = (id: string) => {
     setRunning(id);
-    setTimeout(() => { setRunning(null); setDone(d => [...d, id]); }, 2000);
+    setTimeout(() => { setRunning(null); setDone(d => [...d, id]); }, 2200);
   };
   return (
-    <div>
-      <div className={`text-[11px] font-bold ${color} mb-2`}>{label.toUpperCase()}</div>
-      <div className="space-y-2">
-        {fns.map(fn => (
-          <div key={fn.id} className="border-glow bg-card rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
-                <div className="text-sm font-semibold">{fn.name}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{fn.description}</div>
-                {fn.warning && (
-                  <div className="flex items-start gap-1.5 mt-2 text-[11px] text-amber-400">
-                    <Icon name="AlertTriangle" size={12} className="shrink-0 mt-0.5" />{fn.warning}
-                  </div>
-                )}
-              </div>
-              <button onClick={() => runFn(fn.id)} disabled={running === fn.id}
-                className={`shrink-0 text-xs font-bold px-4 py-2 rounded-lg transition ${done.includes(fn.id) ? 'bg-green-400/15 text-green-400' : 'gradient-primary text-[hsl(220,20%,8%)]'} disabled:opacity-60 flex items-center gap-1`}>
-                {running === fn.id ? <><Icon name="Loader" size={12} className="animate-spin" />Выполнение...</> : done.includes(fn.id) ? <><Icon name="Check" size={12} />Готово</> : 'Выполнить'}
-              </button>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-2">
+      <div className={`flex items-center gap-2 text-xs font-semibold ${a.text} px-1`}>
+        <Icon name={icon} size={13} />
+        {label}
       </div>
+      {fns.map(fn => (
+        <div key={fn.id} className="bg-card border border-white/5 rounded-2xl p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-foreground">{fn.name}</div>
+              <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{fn.description}</div>
+              {fn.warning && (
+                <div className="flex items-start gap-1.5 mt-2.5 text-xs text-amber-400 bg-amber-500/8 border border-amber-500/20 rounded-xl px-3 py-2">
+                  <Icon name="AlertTriangle" size={12} className="shrink-0 mt-0.5" />
+                  <span>{fn.warning}</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => runFn(fn.id)}
+              disabled={running === fn.id}
+              className={`shrink-0 text-xs font-semibold px-3 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-60 flex items-center gap-1.5 ${
+                done.includes(fn.id)
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : running === fn.id
+                  ? a.btn
+                  : a.btn
+              }`}>
+              {running === fn.id
+                ? <><Icon name="Loader2" size={12} className="animate-spin" />Работа...</>
+                : done.includes(fn.id)
+                ? <><Icon name="Check" size={12} />Готово</>
+                : 'Старт'}
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -699,48 +795,101 @@ function ScreenDTC() {
 
   return (
     <div className="space-y-4 animate-fade-up">
-      <SectionTitle title="Справочник DTC" sub={`${Object.keys(DTC_DB).length} кодов с описаниями и рекомендациями`} />
-      <div className="border-glow bg-card rounded-xl p-3 flex items-center gap-2">
+      <SectionTitle title="Справочник DTC" sub={`${Object.keys(DTC_DB).length} кодов`} />
+
+      {/* Поиск */}
+      <div className="bg-card border border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3">
         <Icon name="Search" size={16} className="text-muted-foreground shrink-0" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Код, описание, система..."
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Код или описание..."
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-        {search && <button onClick={() => setSearch('')}><Icon name="X" size={14} className="text-muted-foreground" /></button>}
+        {search && (
+          <button onClick={() => setSearch('')} className="text-muted-foreground active:scale-90 transition-transform">
+            <Icon name="X" size={14} />
+          </button>
+        )}
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {(['all','P','C','B','U'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition ${filter===f ? 'gradient-primary text-[hsl(220,20%,8%)]' : 'bg-secondary text-muted-foreground'}`}>
-            {f==='all'?'Все':`${f} · ${f==='P'?'Двигатель':f==='C'?'Шасси':f==='B'?'Кузов':'Сеть'}`}
+
+      {/* Фильтры */}
+      <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+        {([
+          { id: 'all', label: 'Все' },
+          { id: 'P', label: 'P · Двигатель' },
+          { id: 'C', label: 'C · Шасси' },
+          { id: 'B', label: 'B · Кузов' },
+          { id: 'U', label: 'U · Сеть' },
+        ] as const).map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)}
+            className={`shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all ${
+              filter === f.id
+                ? 'gradient-primary text-white shadow-glow'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}>
+            {f.label}
           </button>
         ))}
       </div>
+
+      {/* Список кодов */}
       <div className="space-y-2">
-        {filtered.length === 0 && <div className="text-center text-muted-foreground text-sm py-10">Ничего не найдено</div>}
+        {filtered.length === 0 && (
+          <div className="py-12 text-center">
+            <Icon name="SearchX" size={32} className="text-muted-foreground mx-auto mb-3" />
+            <div className="text-sm text-muted-foreground">Ничего не найдено</div>
+          </div>
+        )}
         {filtered.map(([code, info]) => (
-          <div key={code} className={`bg-card rounded-xl overflow-hidden ${info.severity==='error'?'border border-red-500/30':info.severity==='warn'?'border border-amber-400/25':'border-glow'}`}>
-            <button className="w-full text-left p-4 flex items-start gap-3" onClick={() => setExpanded(expanded===code?null:code)}>
-              <span className={`font-mono font-bold text-sm shrink-0 mt-0.5 ${info.severity==='error'?'text-red-400':info.severity==='warn'?'text-amber-400':'text-cyan'}`}>{code}</span>
+          <div key={code} className={`bg-card rounded-2xl overflow-hidden border transition-all ${
+            info.severity === 'error'
+              ? 'border-red-500/25'
+              : info.severity === 'warn'
+              ? 'border-amber-500/20'
+              : 'border-white/5'
+          }`}>
+            <button className="w-full text-left p-4 flex items-start gap-3"
+              onClick={() => setExpanded(expanded === code ? null : code)}>
+              <span className={`font-mono font-bold text-sm shrink-0 mt-0.5 ${
+                info.severity === 'error' ? 'text-red-400'
+                : info.severity === 'warn' ? 'text-amber-400'
+                : 'text-blue-400'
+              }`}>{code}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium leading-snug">{info.desc}</div>
-                <div className="text-xs text-muted-foreground mt-1">{info.system}</div>
+                <div className="text-sm font-medium leading-snug text-foreground">{info.desc}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{info.system}</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${info.severity==='error'?'bg-red-400/15 text-red-400':info.severity==='warn'?'bg-amber-400/15 text-amber-400':'bg-primary/15 text-cyan'}`}>
-                  {info.severity==='error'?'Критично':info.severity==='warn'?'Внимание':'Инфо'}
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                  info.severity === 'error' ? 'bg-red-500/15 text-red-400'
+                  : info.severity === 'warn' ? 'bg-amber-500/15 text-amber-400'
+                  : 'bg-blue-500/15 text-blue-400'
+                }`}>
+                  {info.severity === 'error' ? 'Крит.' : info.severity === 'warn' ? 'Внимание' : 'Инфо'}
                 </span>
-                <Icon name={expanded===code?'ChevronUp':'ChevronDown'} size={16} className="text-muted-foreground" />
+                <Icon name={expanded === code ? 'ChevronUp' : 'ChevronDown'} size={15} className="text-muted-foreground" />
               </div>
             </button>
             {expanded === code && (
-              <div className="px-4 pb-4 border-t border-border space-y-3 animate-fade-up">
+              <div className="px-4 pb-4 border-t border-white/5 space-y-3 animate-fade-up">
                 <p className="text-xs text-muted-foreground leading-relaxed pt-3">{info.detail}</p>
                 <div>
-                  <div className="font-display text-[11px] text-muted-foreground mb-1.5">ПРИЧИНЫ</div>
-                  {info.causes.map(c => <div key={c} className="flex items-start gap-2 text-xs py-0.5"><span className="text-amber-400 shrink-0">•</span>{c}</div>)}
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">Причины</div>
+                  <div className="space-y-1">
+                    {info.causes.map(c => (
+                      <div key={c} className="flex items-start gap-2 text-xs text-foreground">
+                        <span className="text-amber-400 shrink-0 mt-0.5">·</span>{c}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <div className="font-display text-[11px] text-muted-foreground mb-1.5">ДЕЙСТВИЯ</div>
-                  {info.actions.map((a,i) => <div key={a} className="flex items-start gap-2 text-xs py-0.5"><span className="text-cyan shrink-0">{i+1}.</span>{a}</div>)}
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">Что делать</div>
+                  <div className="space-y-1">
+                    {info.actions.map((a, i) => (
+                      <div key={a} className="flex items-start gap-2 text-xs text-foreground">
+                        <span className="text-blue-400 font-bold shrink-0">{i + 1}.</span>{a}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
