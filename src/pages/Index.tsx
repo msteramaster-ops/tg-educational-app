@@ -970,47 +970,106 @@ function ScreenHistory({ lastVin }: { lastVin?: VinResult | null }) {
 const APP_VERSION = '2.1.0';
 const LIBRARY_VERSION = '2024-06-15';
 
-// Марки с возможностью загрузки библиотек
 interface MakeLibEntry {
-  id: string; name: string; icon: string; color: string;
+  id: string; name: string; region: string;
   status: 'builtin' | 'partial' | 'empty';
   pids: string;
-  loaded?: { fileName: string; version: string; makes: number };
+  loaded?: { fileName: string; version: string; count: number };
+  // keywords для авторассортировки пачки файлов
+  keywords: string[];
 }
 
-const MAKE_LIBS: MakeLibEntry[] = [
-  { id: 'obd2',    name: 'OBD-II (SAE J1979)', icon: 'Gauge',     color: 'text-green-400',  status: 'builtin', pids: '25 PIDs' },
-  { id: 'dtc',     name: 'DTC база (ISO 15031-6)', icon: 'BookOpen', color: 'text-green-400', status: 'builtin', pids: `${Object.keys(DTC_DB).length} кодов` },
-  { id: 'vin',     name: 'VIN декодер (NHTSA)', icon: 'Search',    color: 'text-green-400',  status: 'builtin', pids: 'API онлайн' },
-  { id: 'vag',     name: 'VAG (VW / Audi / Skoda / SEAT)', icon: 'Car', color: 'text-amber-400', status: 'partial', pids: 'Базовые' },
-  { id: 'bmw',     name: 'BMW / Mini',           icon: 'Car',      color: 'text-amber-400',  status: 'partial', pids: 'Базовые' },
-  { id: 'toyota',  name: 'Toyota / Lexus',       icon: 'Car',      color: 'text-amber-400',  status: 'partial', pids: 'Базовые' },
-  { id: 'mercedes',name: 'Mercedes-Benz',        icon: 'Car',      color: 'text-muted-foreground', status: 'empty', pids: 'Нет данных' },
-  { id: 'hyundai', name: 'Hyundai / Kia',        icon: 'Car',      color: 'text-muted-foreground', status: 'empty', pids: 'Нет данных' },
-  { id: 'ford',    name: 'Ford / Lincoln',       icon: 'Car',      color: 'text-muted-foreground', status: 'empty', pids: 'Нет данных' },
-  { id: 'renault', name: 'Renault / Dacia',      icon: 'Car',      color: 'text-muted-foreground', status: 'empty', pids: 'Нет данных' },
-  { id: 'lada',    name: 'LADA / ВАЗ',          icon: 'Car',      color: 'text-muted-foreground', status: 'empty', pids: 'Нет данных' },
-  { id: 'chinese', name: 'Chinese OEM (Haval/Chery/Geely)', icon: 'Car', color: 'text-amber-400', status: 'partial', pids: 'Базовые' },
+const MAKE_LIBS_INIT: MakeLibEntry[] = [
+  // ── Встроенные ──
+  { id: 'obd2',       name: 'OBD-II (SAE J1979)',           region: 'Стандарт', status: 'builtin', pids: '25 PIDs',                              keywords: ['obd2','obd-ii','obd','j1979'] },
+  { id: 'dtc_db',     name: 'DTC база (ISO 15031-6)',        region: 'Стандарт', status: 'builtin', pids: `${Object.keys(DTC_DB).length} кодов`,  keywords: ['dtc','iso15031','p0','p1','p2','p3','c0','b0','u0'] },
+  { id: 'vin',        name: 'VIN декодер (NHTSA)',           region: 'Стандарт', status: 'builtin', pids: 'API онлайн',                           keywords: ['vin','nhtsa','wmi'] },
+  // ── Европа ──
+  { id: 'vag',        name: 'VAG (VW / Audi / Skoda / SEAT / Porsche)', region: 'Европа', status: 'partial', pids: 'Базовые', keywords: ['vag','vw','volkswagen','audi','skoda','seat','porsche','bentley'] },
+  { id: 'bmw',        name: 'BMW / Mini / Rolls-Royce',      region: 'Европа', status: 'partial', pids: 'Базовые', keywords: ['bmw','mini','rolls-royce','rollsroyce'] },
+  { id: 'mercedes',   name: 'Mercedes-Benz / Smart',         region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['mercedes','benz','smart','mb','xentry','wis'] },
+  { id: 'opel',       name: 'Opel / Vauxhall / Buick',       region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['opel','vauxhall','buick','gm'] },
+  { id: 'peugeot',    name: 'Peugeot / Citroën / DS',        region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['peugeot','citroen','citroën','ds','psa'] },
+  { id: 'renault',    name: 'Renault / Dacia / Alpine',      region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['renault','dacia','alpine','logan'] },
+  { id: 'fiat',       name: 'Fiat / Alfa Romeo / Lancia / Jeep', region: 'Европа', status: 'empty', pids: 'Нет данных', keywords: ['fiat','alfa','alfaromeo','lancia','jeep','stellantis'] },
+  { id: 'volvo',      name: 'Volvo',                         region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['volvo'] },
+  { id: 'saab',       name: 'Saab',                          region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['saab'] },
+  { id: 'ford_eu',    name: 'Ford / Lincoln',                region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['ford','lincoln','ids','fjds'] },
+  { id: 'jaguar',     name: 'Jaguar / Land Rover',           region: 'Европа', status: 'empty',   pids: 'Нет данных', keywords: ['jaguar','landrover','land rover','jlr'] },
+  // ── Япония ──
+  { id: 'toyota',     name: 'Toyota / Lexus',                region: 'Япония', status: 'partial', pids: 'Базовые', keywords: ['toyota','lexus','techstream','tis'] },
+  { id: 'honda',      name: 'Honda / Acura',                 region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['honda','acura','hds'] },
+  { id: 'nissan',     name: 'Nissan / Infiniti',             region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['nissan','infiniti','consult','datsun'] },
+  { id: 'mazda',      name: 'Mazda',                         region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['mazda','ids','mazda ids'] },
+  { id: 'subaru',     name: 'Subaru',                        region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['subaru','select monitor'] },
+  { id: 'mitsubishi', name: 'Mitsubishi',                    region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['mitsubishi','mmcs','mut'] },
+  { id: 'suzuki',     name: 'Suzuki',                        region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['suzuki'] },
+  { id: 'isuzu',      name: 'Isuzu',                         region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['isuzu'] },
+  { id: 'daihatsu',   name: 'Daihatsu',                      region: 'Япония', status: 'empty',   pids: 'Нет данных', keywords: ['daihatsu'] },
+  // ── Корея ──
+  { id: 'hyundai',    name: 'Hyundai / Kia / Genesis',       region: 'Корея',  status: 'empty',   pids: 'Нет данных', keywords: ['hyundai','kia','genesis','gds','kds'] },
+  { id: 'ssangyong',  name: 'SsangYong',                     region: 'Корея',  status: 'empty',   pids: 'Нет данных', keywords: ['ssangyong','ssang yong'] },
+  // ── США ──
+  { id: 'gm',         name: 'GM (Chevrolet / Cadillac / GMC)', region: 'США', status: 'empty',   pids: 'Нет данных', keywords: ['chevrolet','chevy','cadillac','gmc','gm','tech2'] },
+  { id: 'chrysler',   name: 'Chrysler / Dodge / RAM / Jeep',  region: 'США', status: 'empty',   pids: 'Нет данных', keywords: ['chrysler','dodge','ram','witech','fca'] },
+  { id: 'tesla',      name: 'Tesla',                           region: 'США', status: 'empty',   pids: 'Нет данных', keywords: ['tesla'] },
+  // ── Россия / СНГ ──
+  { id: 'lada',       name: 'LADA / ВАЗ / НИВА',             region: 'Россия', status: 'empty',  pids: 'Нет данных', keywords: ['lada','ваз','vaz','niva','niva lada','priora','granta'] },
+  { id: 'gaz',        name: 'ГАЗ / Волга / Газель',          region: 'Россия', status: 'empty',  pids: 'Нет данных', keywords: ['газ','gaz','volga','gazelle','газель'] },
+  { id: 'uaz',        name: 'УАЗ',                            region: 'Россия', status: 'empty',  pids: 'Нет данных', keywords: ['уаз','uaz'] },
+  // ── Китай ──
+  { id: 'haval',      name: 'Haval / Great Wall',             region: 'Китай', status: 'partial', pids: 'Базовые', keywords: ['haval','great wall','greatwall','gwm'] },
+  { id: 'chery',      name: 'Chery / Exeed / Omoda',          region: 'Китай', status: 'partial', pids: 'Базовые', keywords: ['chery','exeed','omoda'] },
+  { id: 'geely',      name: 'Geely / Lynk&Co / Zeekr',       region: 'Китай', status: 'partial', pids: 'Базовые', keywords: ['geely','lynk','zeekr','emgrand'] },
+  { id: 'byd',        name: 'BYD',                            region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['byd'] },
+  { id: 'mg',         name: 'MG / Roewe / SAIC',              region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['mg','roewe','saic','morris garages'] },
+  { id: 'changan',    name: 'Changan / Deepal',               region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['changan','deepal','chang an'] },
+  { id: 'gac',        name: 'GAC / Trumpchi / Aion',          region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['gac','trumpchi','aion'] },
+  { id: 'nio',        name: 'NIO / Li Auto / Xpeng',          region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['nio','li auto','xpeng','li','lixiang'] },
+  { id: 'jac',        name: 'JAC / Sehol',                    region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['jac','sehol'] },
+  { id: 'lifan',      name: 'Lifan / Baic / Beijing',         region: 'Китай', status: 'empty',  pids: 'Нет данных', keywords: ['lifan','baic','beijing'] },
+  // ── Индия ──
+  { id: 'tata',       name: 'Tata / Jaguar (Tata)',           region: 'Индия', status: 'empty',  pids: 'Нет данных', keywords: ['tata','tata motors'] },
+  { id: 'mahindra',   name: 'Mahindra',                       region: 'Индия', status: 'empty',  pids: 'Нет данных', keywords: ['mahindra'] },
 ];
+
+// Авторассортировка пачки файлов по ключевым словам в имени/содержимом
+function detectMakeId(fileName: string, json: Record<string, unknown>, libs: MakeLibEntry[]): string | null {
+  const needle = (fileName + ' ' + (json.make ?? '') + ' ' + (json.brand ?? '') + ' ' + (json.id ?? '')).toLowerCase();
+  for (const lib of libs) {
+    if (lib.id === 'obd2' || lib.id === 'dtc_db' || lib.id === 'vin') continue;
+    if (lib.keywords.some(k => needle.includes(k))) return lib.id;
+  }
+  return null;
+}
 
 function ScreenUpdates() {
   const [checkState, setCheckState] = useState<'idle'|'checking'|'uptodate'|'available'>('idle');
   const [showInstructions, setShowInstructions] = useState(false);
-  const [libs, setLibs] = useState<MakeLibEntry[]>(MAKE_LIBS);
-  const [uploadTarget, setUploadTarget] = useState<string | null>(null);
+  const [libs, setLibs] = useState<MakeLibEntry[]>(MAKE_LIBS_INIT);
+  const [uploadTarget, setUploadTarget] = useState<string | null>(null); // null = авторежим
+  const [batchResults, setBatchResults] = useState<{name: string; makeId: string|null; ok: boolean; msg: string}[]>([]);
+  const [showBatch, setShowBatch] = useState(false);
   const [uploadStep, setUploadStep] = useState<'idle'|'parsing'|'done'|'error'>('idle');
   const [uploadMsg, setUploadMsg] = useState('');
+  const [dtcStep, setDtcStep] = useState<'idle'|'parsing'|'done'|'error'>('idle');
+  const [dtcMsg, setDtcMsg] = useState('');
+  const [dtcCount, setDtcCount] = useState(Object.keys(DTC_DB).length);
+  const [libSearch, setLibSearch] = useState('');
+  const [regionFilter, setRegionFilter] = useState('Все');
   const fileRef = useRef<HTMLInputElement>(null);
+  const batchRef = useRef<HTMLInputElement>(null);
+  const dtcRef = useRef<HTMLInputElement>(null);
 
   const checkUpdates = () => {
     setCheckState('checking');
     setTimeout(() => setCheckState('uptodate'), 2000);
   };
 
+  // Загрузка по конкретной марке
   const startUpload = (makeId: string) => {
     setUploadTarget(makeId);
-    setUploadStep('idle');
-    setUploadMsg('');
+    setUploadStep('idle'); setUploadMsg('');
     fileRef.current?.click();
   };
 
@@ -1022,20 +1081,90 @@ function ScreenUpdates() {
     reader.onload = (ev) => {
       try {
         const text = ev.target?.result as string;
-        const json = JSON.parse(text);
-        if (!json.version) throw new Error('Нет поля version');
-        const makesCount = json.makes?.length ?? json.ecus?.length ?? 1;
+        const json = JSON.parse(text) as Record<string, unknown>;
+        const count = (json.makes as unknown[])?.length ?? (json.ecus as unknown[])?.length ?? (json.pids as unknown[])?.length ?? 1;
+        const ver = (json.version as string) ?? 'неизвестно';
         setTimeout(() => {
           setUploadStep('done');
-          setUploadMsg(`Загружено: ${makesCount} блоков, v${json.version}`);
+          setUploadMsg(`Загружено: ${count} блоков, версия ${ver}`);
           setLibs(prev => prev.map(l => l.id === uploadTarget
-            ? { ...l, status: 'builtin', pids: `${makesCount} блоков`, loaded: { fileName: file.name, version: json.version, makes: makesCount } }
+            ? { ...l, status: 'builtin' as const, pids: `${count} блоков`, loaded: { fileName: file.name, version: ver, count } }
             : l
           ));
-        }, 1000);
+        }, 800);
       } catch {
         setUploadStep('error');
-        setUploadMsg('Ошибка: файл не соответствует формату .adl.json');
+        setUploadMsg('Ошибка: не удалось разобрать JSON файл');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Массовая загрузка — авторассортировка
+  const handleBatch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const results: typeof batchResults = [];
+    let processed = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        processed++;
+        try {
+          const json = JSON.parse(ev.target?.result as string) as Record<string, unknown>;
+          const makeId = detectMakeId(file.name, json, MAKE_LIBS_INIT);
+          const count = (json.makes as unknown[])?.length ?? (json.ecus as unknown[])?.length ?? (json.pids as unknown[])?.length ?? 1;
+          const ver = (json.version as string) ?? '—';
+          if (makeId) {
+            setLibs(prev => prev.map(l => l.id === makeId
+              ? { ...l, status: 'builtin' as const, pids: `${count} блоков`, loaded: { fileName: file.name, version: ver, count } }
+              : l
+            ));
+            results.push({ name: file.name, makeId, ok: true, msg: `→ ${MAKE_LIBS_INIT.find(l=>l.id===makeId)?.name ?? makeId}, ${count} блоков` });
+          } else {
+            results.push({ name: file.name, makeId: null, ok: false, msg: 'Марка не распознана — загрузи вручную' });
+          }
+        } catch {
+          results.push({ name: file.name, makeId: null, ok: false, msg: 'Ошибка разбора JSON' });
+        }
+        if (processed === files.length) {
+          setBatchResults(results);
+          setShowBatch(true);
+        }
+      };
+      reader.readAsText(file);
+    });
+    e.target.value = '';
+  };
+
+  // Загрузка DTC из файла
+  const handleDtcFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDtcStep('parsing'); setDtcMsg('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        const json = JSON.parse(text) as Record<string, unknown>;
+        // Поддерживаем два формата:
+        // 1. { "P0001": { desc, detail, system, severity, causes, actions } ... }
+        // 2. { "codes": { ... } } или { "dtc": { ... } }
+        const rawCodes = (json.codes ?? json.dtc ?? json) as Record<string, unknown>;
+        const count = Object.keys(rawCodes).filter(k => /^[PCBU]\d/i.test(k)).length;
+        if (count === 0) throw new Error('Нет DTC кодов в файле');
+        // Merge в существующую базу через localStorage
+        const existing = JSON.parse(localStorage.getItem('dtc_ext') ?? '{}') as Record<string, unknown>;
+        const merged = { ...existing, ...rawCodes };
+        localStorage.setItem('dtc_ext', JSON.stringify(merged));
+        const total = count + dtcCount;
+        setDtcCount(total);
+        setDtcStep('done');
+        setDtcMsg(`Добавлено ${count} кодов. Всего в базе: ${total}`);
+      } catch (err) {
+        setDtcStep('error');
+        setDtcMsg(`Ошибка: ${err instanceof Error ? err.message : 'неверный формат файла'}`);
       }
     };
     reader.readAsText(file);
@@ -1043,6 +1172,13 @@ function ScreenUpdates() {
   };
 
   const resetUpload = () => { setUploadTarget(null); setUploadStep('idle'); setUploadMsg(''); };
+
+  const regions = ['Все', ...Array.from(new Set(MAKE_LIBS_INIT.map(l => l.region)))];
+  const visibleLibs = libs.filter(l => {
+    const matchRegion = regionFilter === 'Все' || l.region === regionFilter;
+    const matchSearch = !libSearch || l.name.toLowerCase().includes(libSearch.toLowerCase());
+    return matchRegion && matchSearch;
+  });
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -1055,7 +1191,7 @@ function ScreenUpdates() {
         </button>
       </div>
 
-      {/* Версия приложения */}
+      {/* Версия */}
       <div className="border-glow bg-card rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -1066,7 +1202,7 @@ function ScreenUpdates() {
             <Icon name="Activity" size={18} className="text-[hsl(220,20%,8%)]" />
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">База DTC: {Object.keys(DTC_DB).length} кодов · Библиотека: {LIBRARY_VERSION}</div>
+        <div className="text-xs text-muted-foreground">База DTC: {dtcCount} кодов · Библиотека: {LIBRARY_VERSION}</div>
         <button onClick={checkUpdates} disabled={checkState==='checking'}
           className="w-full gradient-primary text-[hsl(220,20%,8%)] font-bold py-2.5 rounded-lg font-display tracking-wider disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
           {checkState==='checking' ? <><Icon name="Loader" size={14} className="animate-spin" />Проверка...</>
@@ -1077,14 +1213,90 @@ function ScreenUpdates() {
         {checkState==='uptodate' && <div className="text-xs text-green-400 text-center">Установлена последняя версия</div>}
       </div>
 
-      {/* Библиотеки по маркам */}
-      <div className="space-y-2">
-        <div className="font-display text-xs text-muted-foreground">БИБЛИОТЕКИ ПРОТОКОЛОВ ПО МАРКАМ</div>
+      {/* ── DTC база ── */}
+      <div className="border-glow bg-card rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-display text-sm text-muted-foreground">БАЗА КОДОВ ОШИБОК (DTC)</div>
+            <div className="font-semibold mt-0.5">{dtcCount} кодов в базе</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-400/15 flex items-center justify-center">
+            <Icon name="AlertTriangle" size={18} className="text-amber-400" />
+          </div>
+        </div>
         <div className="text-xs text-muted-foreground leading-relaxed">
-          Загрузи файл <span className="font-mono text-cyan">.adl.json</span> для нужной марки — локально с устройства или по ссылке с сервера.
+          Загрузи JSON-файл с кодами ошибок — новые коды добавятся к встроенной базе. Поддерживаемый формат:
+        </div>
+        <div className="bg-secondary rounded-lg p-3 text-[11px] font-mono text-muted-foreground space-y-0.5">
+          <div className="text-cyan mb-1">{'// Формат файла DTC (dtc-база.json)'}</div>
+          <div>{'{'}</div>
+          <div className="pl-3"><span className="text-amber-400">"P0001"</span>{': { '}<span className="text-green-400">"desc"</span>{': "...", '}<span className="text-green-400">"detail"</span>{': "...", '}<span className="text-green-400">"system"</span>{': "...", '}<span className="text-green-400">"severity"</span>{': "error|warn|info", '}<span className="text-green-400">"causes"</span>{': [...], '}<span className="text-green-400">"actions"</span>{': [...] },'}</div>
+          <div className="pl-3"><span className="text-amber-400">"P0100"</span>{': { ... }'}</div>
+          <div>{'}'}</div>
+        </div>
+        <div className="text-[11px] text-muted-foreground">Можно загружать несколько файлов подряд — коды суммируются.</div>
+
+        {dtcStep === 'parsing' && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon name="Loader" size={13} className="animate-spin text-cyan" />Разбор файла DTC...</div>}
+        {dtcStep === 'done' && <div className="flex items-center gap-2 text-xs text-green-400"><Icon name="CheckCircle" size={13} />{dtcMsg}</div>}
+        {dtcStep === 'error' && <div className="flex items-center gap-2 text-xs text-red-400"><Icon name="AlertCircle" size={13} />{dtcMsg}</div>}
+
+        <input ref={dtcRef} type="file" accept=".json" className="hidden" onChange={handleDtcFile} />
+        <button onClick={() => { setDtcStep('idle'); dtcRef.current?.click(); }}
+          className="w-full border border-amber-400/40 text-amber-400 font-bold py-2.5 rounded-xl hover:bg-amber-400/10 transition flex items-center justify-center gap-2 text-sm">
+          <Icon name="FolderOpen" size={16} />Загрузить DTC базу (.json)
+        </button>
+      </div>
+
+      {/* ── Массовая загрузка ── */}
+      <div className="border border-cyan/25 bg-cyan/5 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Icon name="Layers" size={16} className="text-cyan shrink-0" />
+          <div>
+            <div className="font-semibold text-sm">Массовая загрузка библиотек</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">Выбери сразу несколько файлов — авторассортирую по маркам</div>
+          </div>
+        </div>
+        <input ref={batchRef} type="file" accept=".json,.adl.json" multiple className="hidden" onChange={handleBatch} />
+        <button onClick={() => batchRef.current?.click()}
+          className="w-full gradient-primary text-[hsl(220,20%,8%)] font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm">
+          <Icon name="Upload" size={16} />Загрузить несколько файлов сразу
+        </button>
+        {showBatch && batchResults.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="font-display text-[11px] text-muted-foreground">РЕЗУЛЬТАТ РАССОРТИРОВКИ:</div>
+            {batchResults.map((r, i) => (
+              <div key={i} className={`flex items-start gap-2 text-[11px] rounded-lg px-3 py-2 ${r.ok ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
+                <Icon name={r.ok ? 'CheckCircle' : 'AlertCircle'} size={12} className="shrink-0 mt-0.5" />
+                <div><span className="font-mono">{r.name}</span><span className="text-muted-foreground ml-1">— {r.msg}</span></div>
+              </div>
+            ))}
+            <button onClick={() => setShowBatch(false)} className="text-[11px] text-muted-foreground underline">Скрыть</button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Библиотеки по маркам ── */}
+      <div className="space-y-2">
+        <div className="font-display text-xs text-muted-foreground">БИБЛИОТЕКИ ПРОТОКОЛОВ ПО МАРКАМ ({libs.filter(l=>l.status!=='empty').length}/{libs.length})</div>
+
+        {/* Поиск + фильтр по региону */}
+        <div className="flex gap-2">
+          <div className="flex-1 border-glow bg-card rounded-lg px-3 py-2 flex items-center gap-2">
+            <Icon name="Search" size={13} className="text-muted-foreground shrink-0" />
+            <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Поиск марки..."
+              className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground" />
+          </div>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {regions.map(r => (
+            <button key={r} onClick={() => setRegionFilter(r)}
+              className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full transition ${regionFilter===r ? 'gradient-primary text-[hsl(220,20%,8%)]' : 'bg-secondary text-muted-foreground'}`}>
+              {r}
+            </button>
+          ))}
         </div>
 
-        {/* Статусы загрузки */}
+        {/* Статус загрузки по одной марке */}
         {uploadStep === 'parsing' && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary rounded-xl px-4 py-3">
             <Icon name="Loader" size={14} className="animate-spin text-cyan" />Разбор файла...
@@ -1105,36 +1317,42 @@ function ScreenUpdates() {
 
         <input ref={fileRef} type="file" accept=".json,.adl.json" className="hidden" onChange={handleFile} />
 
-        <div className="space-y-2">
-          {libs.map(lib => (
+        <div className="space-y-1.5">
+          {visibleLibs.map(lib => (
             <div key={lib.id} className={`border rounded-xl p-3 flex items-center gap-3 ${lib.status==='builtin'?'border-green-400/25 bg-green-400/5':lib.status==='partial'?'border-amber-400/20 bg-card':'border-border bg-card'}`}>
-              <div className={`w-2 h-2 rounded-full shrink-0 ${lib.status==='builtin'?'bg-green-400':lib.status==='partial'?'bg-amber-400':'bg-muted-foreground/40'}`} />
+              <div className={`w-2 h-2 rounded-full shrink-0 ${lib.status==='builtin'?'bg-green-400':lib.status==='partial'?'bg-amber-400':'bg-muted-foreground/30'}`} />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold truncate">{lib.name}</div>
-                {lib.loaded
-                  ? <div className="text-[11px] text-green-400 font-mono truncate">{lib.loaded.fileName} · v{lib.loaded.version}</div>
-                  : <div className="text-[11px] text-muted-foreground">{lib.pids}</div>
-                }
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground/60">{lib.region}</span>
+                  {lib.loaded
+                    ? <span className="text-[10px] text-green-400 font-mono truncate">· {lib.loaded.fileName} · v{lib.loaded.version}</span>
+                    : <span className="text-[10px] text-muted-foreground">· {lib.pids}</span>
+                  }
+                </div>
               </div>
               {lib.status === 'builtin' && !lib.loaded ? (
-                <span className="shrink-0 text-[11px] font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Встроена</span>
+                <span className="shrink-0 text-[10px] font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Встроена</span>
               ) : (
                 <button
                   onClick={() => startUpload(lib.id)}
                   disabled={uploadStep === 'parsing'}
                   className="shrink-0 flex items-center gap-1 text-[11px] font-bold border border-primary/30 text-cyan px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition disabled:opacity-40">
-                  <Icon name="Upload" size={12} />{lib.loaded ? 'Обновить' : 'Загрузить'}
+                  <Icon name="Upload" size={11} />{lib.loaded ? 'Обновить' : 'Загрузить'}
                 </button>
               )}
             </div>
           ))}
+          {visibleLibs.length === 0 && (
+            <div className="text-center text-muted-foreground text-xs py-6">Ничего не найдено</div>
+          )}
         </div>
       </div>
 
       {/* Модал: Инструкции */}
       {showInstructions && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center" onClick={() => setShowInstructions(false)}>
-          <div className="bg-card border-glow rounded-t-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto animate-fade-up" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowInstructions(false)}>
+          <div className="bg-card border-glow rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between">
               <div className="font-display text-base text-cyan-glow">Где брать данные для библиотек</div>
               <button onClick={() => setShowInstructions(false)}><Icon name="X" size={18} className="text-muted-foreground" /></button>
