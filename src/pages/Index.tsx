@@ -5,6 +5,7 @@ import { VEHICLE_DB, REGIONS, type EcuBlock, type EcuFunction } from '@/data/veh
 import { DTC_DB } from '@/data/dtc';
 import { elm327, LIVE_PARAMS_CONFIG, PARAM_GROUPS, type LiveParam } from '@/lib/bluetooth';
 import { useBuiltinProtocols } from '@/hooks/useBuiltinProtocols';
+import { WMI_DB, decodeVinExtended } from '@/data/vinDatabase';
 
 // ── VIN API ───────────────────────────────────────────────────────────────────
 interface VinResult {
@@ -12,28 +13,109 @@ interface VinResult {
   type: string; engine: string; fuel: string; country: string;
   doors: string; drive: string; transmission: string;
   wmi: string; vds: string; serial: string;
+  // Расширенные поля
+  power?: string; bodyCode?: string; generation?: string;
+  productionYears?: string; plant?: string; description?: string;
+  extOptions?: { label: string; value: string; icon: string }[];
 }
-function localCountry(vin: string): string {
-  const map: Record<string, string> = { W: 'Германия', V: 'Швеция/Франция', S: 'Великобритания', Z: 'Италия', X: 'Россия', J: 'Япония', K: 'Южная Корея', L: 'Китай', '1': 'США', '2': 'Канада', '3': 'Мексика' };
+
+function getCountryByFirst(vin: string): string {
+  const map: Record<string, string> = {
+    W: 'Германия', V: 'Швеция/Франция', S: 'Великобритания',
+    Z: 'Италия', X: 'Россия', J: 'Япония', K: 'Южная Корея',
+    L: 'Китай', '1': 'США', '2': 'Канада', '3': 'Мексика',
+    A: 'ЮАР', B: 'Ангола', M: 'Индия', N: 'Австрия',
+    T: 'Швейцария', U: 'Румыния', P: 'Филиппины',
+  };
   return map[vin[0]] || 'Неизвестно';
 }
-function localDecodeVin(vin: string): VinResult {
-  const v = vin.toUpperCase();
-  const makes: Record<string, string> = { WVW: 'Volkswagen', WAU: 'Audi', WBA: 'BMW', WDD: 'Mercedes-Benz', WDB: 'Mercedes-Benz', TMB: 'Škoda', VSS: 'SEAT', JTD: 'Toyota', JTM: 'Toyota', SAL: 'Land Rover', XTA: 'LADA (ВАЗ)', YV1: 'Volvo', ZAR: 'Alfa Romeo', KNM: 'Kia', KMH: 'Hyundai', VF1: 'Renault', VF3: 'Peugeot' };
-  const years: Record<string, string> = { A:'1980',B:'1981',C:'1982',D:'1983',E:'1984',F:'1985',G:'1986',H:'1987',J:'1988',K:'1989',L:'1990',M:'1991',N:'1992',P:'1993',R:'1994',S:'1995',T:'1996',V:'1997',W:'1998',X:'1999',Y:'2000','1':'2001','2':'2002','3':'2003','4':'2004','5':'2005','6':'2006','7':'2007','8':'2008','9':'2009' };
-  return { vin: v, make: makes[v.slice(0,3)] || 'Неизвестно', model: '—', year: years[v[9]] || '—', type: '—', engine: '—', fuel: '—', country: localCountry(v), doors: '—', drive: '—', transmission: '—', wmi: v.slice(0,3), vds: v.slice(3,9), serial: v.slice(11) };
-}
+
 async function fetchVin(vin: string): Promise<VinResult> {
+  const v = vin.toUpperCase().trim();
+  const wmi = v.slice(0, 3);
+
+  // Локальная расширенная расшифровка
+  const wmiData = WMI_DB[wmi];
+  const localMake = wmiData?.make || '';
+  const yearChar = v[9];
+  const plantChar = v[10];
+  const localYear = YEAR_MAP[yearChar];
+  const country = wmiData?.country || getCountryByFirst(v);
+
+  // Расширенная расшифровка из нашей базы
+  const extended = decodeVinExtended(v);
+
+  // Запрос к NHTSA для дополнительных данных (не блокирующий)
+  let nhtsaModel = '';
+  let nhtsaDoors = '';
+  let nhtsaType = '';
+  let nhtsaEngine = '';
+  let nhtsaFuel = '';
+  let nhtsaDrive = '';
+  let nhtsaTrans = '';
+
   try {
-    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/${vin}?format=json`);
+    const res = await fetch(
+      `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/${v}?format=json`,
+      { signal: AbortSignal.timeout(5000) }
+    );
     const json = await res.json();
     const r = json.Results?.[0];
-    if (!r || r.ErrorCode !== '0') return localDecodeVin(vin);
-    const tf = (v: string) => !v ? '—' : v.includes('Gasoline') ? 'Бензин' : v.includes('Diesel') ? 'Дизель' : v.includes('Electric') ? 'Электро' : v.includes('Hybrid') ? 'Гибрид' : v;
-    const td = (v: string) => !v ? '—' : v.includes('FWD') ? 'Передний (FWD)' : v.includes('RWD') ? 'Задний (RWD)' : (v.includes('AWD') || v.includes('4WD')) ? 'Полный (AWD)' : v;
-    const tt = (v: string) => !v ? '—' : v.includes('Automatic') ? 'Автоматическая' : v.includes('Manual') ? 'Механическая' : v.includes('CVT') ? 'Вариатор (CVT)' : v;
-    return { vin: vin.toUpperCase(), make: r.Make||'—', model: r.Model||'—', year: r.ModelYear||'—', type: r.VehicleType||'—', engine: r.DisplacementL ? `${parseFloat(r.DisplacementL).toFixed(1)}L ${r.EngineCylinders||''}-цил.` : '—', fuel: tf(r.FuelTypePrimary), country: r.PlantCountry||localCountry(vin), doors: r.Doors||'—', drive: td(r.DriveType), transmission: tt(r.TransmissionStyle), wmi: vin.slice(0,3), vds: vin.slice(3,9), serial: vin.slice(11) };
-  } catch { return localDecodeVin(vin); }
+    if (r && r.ErrorCode === '0') {
+      nhtsaModel = r.Model || '';
+      nhtsaDoors = r.Doors || '';
+      nhtsaType = r.VehicleType || '';
+
+      const tf = (s: string) => !s ? '' : s.includes('Gasoline') ? 'Бензин' : s.includes('Diesel') ? 'Дизель' : s.includes('Electric') ? 'Электро' : s.includes('Hybrid') ? 'Гибрид' : s;
+      const td = (s: string) => !s ? '' : s.includes('FWD') ? 'Передний (FWD)' : s.includes('RWD') ? 'Задний (RWD)' : (s.includes('AWD') || s.includes('4WD')) ? 'Полный (AWD)' : s;
+      const tt = (s: string) => !s ? '' : s.includes('Automatic') ? 'Автоматическая' : s.includes('Manual') ? 'Механическая' : s.includes('CVT') ? 'Вариатор (CVT)' : s;
+
+      nhtsaFuel = tf(r.FuelTypePrimary);
+      nhtsaDrive = td(r.DriveType);
+      nhtsaTrans = tt(r.TransmissionStyle);
+      nhtsaEngine = r.DisplacementL
+        ? `${parseFloat(r.DisplacementL).toFixed(1)} л · ${r.EngineCylinders || ''}цил.`
+        : '';
+    }
+  } catch { /* NHTSA недоступна — используем локальные данные */ }
+
+  // Определяем завод
+  const plantDb = PLANT_DB[localMake] || {};
+  const plant = plantDb[plantChar] || extended.plant || `Код завода ${plantChar}`;
+
+  // Собираем итоговые опции
+  const opts: { label: string; value: string; icon: string }[] = [
+    ...(extended.options || []),
+  ];
+
+  // Дополняем от NHTSA если наш парсер ничего не нашёл
+  if (nhtsaEngine && !extended.engine.includes('л')) opts.push({ label: 'Двигатель (NHTSA)', value: nhtsaEngine, icon: 'Zap' });
+  if (nhtsaDrive && !extended.drive.includes('WD')) opts.push({ label: 'Привод (NHTSA)', value: nhtsaDrive, icon: 'GitMerge' });
+  if (nhtsaTrans && !extended.transmission) opts.push({ label: 'Трансмиссия (NHTSA)', value: nhtsaTrans, icon: 'Settings2' });
+
+  return {
+    vin: v,
+    make: localMake || nhtsaModel?.split(' ')[0] || '—',
+    model: nhtsaModel || extended.bodyCode || '—',
+    year: (extended.modelYear || localYear || '—').toString(),
+    type: nhtsaType || '—',
+    engine: extended.engine !== '—' ? extended.engine : nhtsaEngine || '—',
+    fuel: extended.fuel !== '—' ? extended.fuel : nhtsaFuel || '—',
+    country,
+    doors: nhtsaDoors || extended.doors || '—',
+    drive: extended.drive !== '—' ? extended.drive : nhtsaDrive || '—',
+    transmission: extended.transmission !== '—' ? extended.transmission : nhtsaTrans || '—',
+    wmi,
+    vds: v.slice(3, 9),
+    serial: v.slice(11),
+    power: extended.power !== '—' ? extended.power : undefined,
+    bodyCode: extended.bodyCode !== v.slice(3, 9) ? extended.bodyCode : undefined,
+    generation: extended.generation !== '—' ? extended.generation : undefined,
+    productionYears: extended.productionYears !== '—' ? extended.productionYears : undefined,
+    plant,
+    description: extended.description || undefined,
+    extOptions: opts.length > 0 ? opts : undefined,
+  };
 }
 
 // ── DTC статусы ───────────────────────────────────────────────────────────────
@@ -130,55 +212,197 @@ function ScreenVin({ onVinDecoded }: { onVinDecoded?: (v: VinResult) => void }) 
     onVinDecoded?.(r);
   }, [input, onVinDecoded]);
 
-  const fields: [string, string, boolean][] = result ? [
-    ['VIN', result.vin, true], ['Марка', result.make, false], ['Модель', result.model, false],
-    ['Год выпуска', result.year, false], ['Тип ТС', result.type, false], ['Двигатель', result.engine, false],
-    ['Топливо', result.fuel, false], ['Привод', result.drive, false], ['КПП', result.transmission, false],
-    ['Количество дверей', result.doors, false], ['Страна', result.country, false],
-    ['WMI', result.wmi, true], ['VDS', result.vds, true], ['Серийный номер', result.serial, true],
+  // Визуальная разбивка VIN на блоки
+  const vinBlocks = input.length === 17 ? [
+    { chars: input.slice(0, 3),  label: 'WMI',    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    { chars: input.slice(3, 9),  label: 'VDS',    color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+    { chars: input[9],           label: 'Год',    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+    { chars: input[10],          label: 'Завод',  color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+    { chars: input.slice(11),    label: 'Серия',  color: 'bg-secondary text-muted-foreground border-white/10' },
+  ] : [];
+
+  // Основные поля результата
+  const mainFields: [string, string, string][] = result ? [
+    ['Марка', result.make, 'Car'],
+    ['Модель / Кузов', result.model, 'Hash'],
+    ['Год выпуска', result.year, 'Calendar'],
+    ['Страна производства', result.country, 'MapPin'],
+    ['Двигатель', result.engine, 'Zap'],
+    ['Топливо', result.fuel, 'Fuel'],
+    ['Мощность', result.power || '—', 'Gauge'],
+    ['Привод', result.drive, 'GitMerge'],
+    ['Трансмиссия', result.transmission, 'Settings2'],
+    ['Дверей', result.doors, 'DoorOpen'],
+  ] : [];
+
+  // Расширенные поля (из нашей базы)
+  const extFields: [string, string, string][] = result ? [
+    ['Код кузова', result.bodyCode || '—', 'Hash'],
+    ['Поколение', result.generation || '—', 'Layers'],
+    ['Период производства', result.productionYears || '—', 'Calendar'],
+    ['Завод изготовления', result.plant || '—', 'Factory'],
+    ['WMI (производитель)', result.wmi, 'Building'],
+    ['VDS (описание авто)', result.vds, 'Fingerprint'],
+    ['Серийный номер', result.serial, 'Hash'],
   ] : [];
 
   return (
     <div className="space-y-4 animate-fade-up">
-      <SectionTitle title="Интеллект. VIN-дешифратор" sub="Расшифровка через базу NHTSA + локальный справочник" />
-      <div className="border-glow bg-card rounded-xl p-4 space-y-3">
-        <input value={input} onChange={e => setInput(e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,17))}
-          placeholder="Введите VIN (17 знаков)" maxLength={17} onKeyDown={e => e.key==='Enter' && search()}
-          className="w-full bg-secondary rounded-lg px-4 py-3 font-mono text-sm tracking-widest outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground" />
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{input.length}/17</span>
-          {input.length === 17 && <span className="text-green-400">✓ Корректная длина</span>}
+      <SectionTitle title="VIN-дешифратор" sub="Расшифровка по NHTSA и встроенной базе" />
+
+      {/* Поле ввода */}
+      <div className="bg-card border border-white/5 rounded-2xl p-4 space-y-3">
+        <div className="relative">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '').slice(0, 17))}
+            placeholder="ВВЕДИТЕ VIN — 17 СИМВОЛОВ"
+            maxLength={17}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            className="w-full bg-secondary border border-white/5 rounded-2xl px-4 py-3.5 font-mono text-sm tracking-[0.2em] text-foreground outline-none focus:border-blue-500/40 transition-colors placeholder:text-muted-foreground placeholder:tracking-normal"
+          />
+          {input.length > 0 && (
+            <button onClick={() => setInput('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-90 transition-transform">
+              <Icon name="X" size={16} />
+            </button>
+          )}
         </div>
-        <button onClick={search} disabled={loading || input.length !== 17}
-          className="w-full gradient-primary text-[hsl(220,20%,8%)] font-bold py-3 rounded-lg font-display tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
-          {loading ? <><Icon name="Loader" size={16} className="animate-spin" />ЗАПРОС...</> : <><Icon name="Search" size={16} />РАСШИФРОВАТЬ VIN</>}
-        </button>
-      </div>
-      {error && <div className="border border-red-500/40 bg-card rounded-xl p-4 text-sm text-red-400 flex gap-2"><Icon name="AlertCircle" size={16} className="shrink-0 mt-0.5" />{error}</div>}
-      {result && (
-        <div className="border-glow bg-card rounded-xl overflow-hidden animate-fade-up">
-          <div className="gradient-primary px-4 py-3 flex items-center gap-2">
-            <Icon name="Car" size={18} className="text-[hsl(220,20%,8%)]" />
-            <span className="font-display font-bold text-[hsl(220,20%,8%)] text-lg">{result.make} {result.model !== '—' ? result.model : ''} {result.year !== '—' ? result.year : ''}</span>
-          </div>
-          <div className="p-4">
-            {fields.map(([label, value, mono]) => value && value !== '—' && (
-              <div key={label} className="flex justify-between items-center py-2.5 border-b border-border last:border-0">
-                <span className="text-xs text-muted-foreground">{label}</span>
-                <span className={`text-sm font-semibold ml-4 text-right ${mono ? 'font-mono text-cyan' : ''}`}>{value}</span>
+
+        {/* VIN-визуализация */}
+        {input.length === 17 && (
+          <div className="flex gap-1 animate-fade-up">
+            {vinBlocks.map((b, i) => (
+              <div key={i} className={`flex-1 rounded-xl border p-1.5 text-center ${b.color}`}>
+                <div className="font-mono font-bold text-[11px] tracking-wider">{b.chars}</div>
+                <div className="text-[9px] opacity-60 mt-0.5">{b.label}</div>
               </div>
             ))}
           </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{input.length} / 17 символов</span>
+          {input.length === 17 && <span className="text-xs text-emerald-400 font-medium">✓ Формат верный</span>}
+        </div>
+
+        <button onClick={search} disabled={loading || input.length !== 17}
+          className="w-full gradient-primary text-white font-semibold py-3.5 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-glow">
+          {loading
+            ? <><Icon name="Loader2" size={16} className="animate-spin" />Расшифровываем...</>
+            : <><Icon name="Search" size={16} />Расшифровать VIN</>}
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2.5 text-sm text-red-400 bg-red-500/8 border border-red-500/20 rounded-2xl px-4 py-3">
+          <Icon name="AlertCircle" size={16} className="shrink-0 mt-0.5" />
+          {error}
         </div>
       )}
-      <div className="border-glow bg-card rounded-xl p-4">
-        <div className="font-display text-xs text-muted-foreground mb-2">СТРУКТУРА VIN</div>
-        <div className="flex gap-1.5 text-xs flex-wrap font-mono">
-          {[['WMI (1-3)','bg-primary/20 text-cyan'],['VDS (4-9)','bg-accent/20 text-amber-400'],['Год (10)','bg-secondary'],['Завод (11)','bg-secondary'],['Серия (12-17)','bg-secondary']].map(([l,c]) => (
-            <span key={l} className={`${c} px-2 py-1 rounded`}>{l}</span>
-          ))}
+
+      {result && (
+        <div className="space-y-3 animate-fade-up">
+          {/* Шапка авто */}
+          <div className="relative overflow-hidden rounded-3xl gradient-primary p-5">
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/10 -translate-y-12 translate-x-12 blur-2xl pointer-events-none" />
+            <div className="relative">
+              <div className="text-white/70 text-xs mb-1 font-mono">{result.vin}</div>
+              <div className="text-white font-display text-2xl font-bold leading-tight">
+                {result.make !== '—' ? result.make : ''} {result.model !== '—' ? result.model : ''}
+              </div>
+              <div className="text-white/80 text-sm mt-1">
+                {result.year !== '—' ? `${result.year} г.` : ''}
+                {result.generation ? ` · ${result.generation}` : ''}
+              </div>
+              {result.description && (
+                <div className="text-white/60 text-xs mt-2 leading-relaxed">{result.description}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Основные характеристики */}
+          <div className="bg-card border border-white/5 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Основные данные</div>
+            </div>
+            <div className="divide-y divide-white/5">
+              {mainFields.filter(([, v]) => v && v !== '—').map(([label, value, icon]) => (
+                <div key={label} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <Icon name={icon} size={14} className="text-muted-foreground" />
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-1">{label}</span>
+                  <span className="text-sm font-semibold text-foreground text-right max-w-[55%]">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Расширенные данные */}
+          <div className="bg-card border border-white/5 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Данные кузова и производства</div>
+            </div>
+            <div className="divide-y divide-white/5">
+              {extFields.filter(([, v]) => v && v !== '—').map(([label, value, icon]) => (
+                <div key={label} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <Icon name={icon} size={14} className="text-blue-400/70" />
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-1">{label}</span>
+                  <span className="text-sm font-semibold text-foreground font-mono text-right max-w-[55%]">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Модификации из расширенной базы */}
+          {result.extOptions && result.extOptions.length > 0 && (
+            <div className="bg-card border border-white/5 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/5">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Модификация и комплектация</div>
+              </div>
+              <div className="divide-y divide-white/5">
+                {result.extOptions
+                  .filter(o => o.value && o.value !== '—' && !o.value.startsWith('Код завода'))
+                  .map(opt => (
+                    <div key={opt.label} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                        <Icon name={opt.icon} size={14} className="text-violet-400" fallback="Info" />
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-1">{opt.label}</span>
+                      <span className="text-sm font-semibold text-foreground text-right max-w-[55%]">{opt.value}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Разбивка VIN */}
+          <div className="bg-card border border-white/5 rounded-2xl p-4">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Структура VIN</div>
+            <div className="space-y-2">
+              {[
+                { range: '1–3', chars: result.wmi, label: 'WMI — Производитель', color: 'text-blue-400 bg-blue-500/10' },
+                { range: '4–9', chars: result.vds, label: 'VDS — Описание автомобиля', color: 'text-violet-400 bg-violet-500/10' },
+                { range: '10',  chars: result.vin[9],  label: `Год выпуска → ${result.year}`, color: 'text-amber-400 bg-amber-500/10' },
+                { range: '11',  chars: result.vin[10], label: 'Завод изготовления', color: 'text-emerald-400 bg-emerald-500/10' },
+                { range: '9',   chars: result.vin[8],  label: 'Контрольная цифра', color: 'text-muted-foreground bg-secondary' },
+                { range: '12–17', chars: result.serial, label: 'Серийный номер', color: 'text-muted-foreground bg-secondary' },
+              ].map(row => (
+                <div key={row.range} className="flex items-center gap-3">
+                  <div className={`shrink-0 rounded-lg px-2 py-1 font-mono font-bold text-xs ${row.color}`}>{row.chars}</div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-muted-foreground">{row.label}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/50 shrink-0">поз.{row.range}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
