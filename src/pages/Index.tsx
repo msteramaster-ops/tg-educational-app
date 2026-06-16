@@ -967,22 +967,127 @@ function ScreenUpdates() {
         )}
       </div>
 
-      {/* Где брать библиотеки — честный раздел */}
-      <div className="border border-amber-400/25 bg-amber-400/5 rounded-xl p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Icon name="Info" size={16} className="text-amber-400 shrink-0" />
-          <div className="font-display text-sm text-amber-400">О ПРОТОКОЛАХ И БАЗАХ ДАННЫХ</div>
-        </div>
-        <div className="text-xs text-muted-foreground leading-relaxed space-y-2">
-          <p>Проприетарные диагностические протоколы (VAG KWP, BMW ENET, Toyota TIS, Mercedes XENTRY) защищены авторским правом. Готовых открытых баз не существует.</p>
-          <p className="font-semibold text-foreground">Где получить реальные данные для библиотек:</p>
-          <div className="space-y-1.5 pl-2">
-            <div>• <span className="text-cyan">OBD Alliance / ASAM MCD-2D</span> — открытые стандарты описания диагностических данных (ODX, PDX)</div>
-            <div>• <span className="text-cyan">OpenDiagnostics</span> — сообщество reverse engineering протоколов</div>
-            <div>• <span className="text-cyan">Реверс-инжиниринг</span> — захват трафика через SocketCAN при работе оригинального сканера</div>
-            <div>• <span className="text-cyan">Дилерская документация</span> — WIS, ELSA, TIS, ISTA содержат описания параметров</div>
+      {/* Где брать данные для библиотек */}
+      <div className="space-y-3">
+        <div className="font-display text-xs text-muted-foreground">ГДЕ БРАТЬ ДАННЫЕ ДЛЯ БИБЛИОТЕК</div>
+
+        {/* 1. ASAM */}
+        <div className="border-glow bg-card rounded-xl p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-cyan/10 flex items-center justify-center shrink-0">
+                <Icon name="FileCode" size={16} className="text-cyan" />
+              </div>
+              <div>
+                <div className="font-semibold text-sm">ASAM MCD-2D / ODX</div>
+                <div className="text-[11px] text-muted-foreground">Открытый стандарт описания диагностики</div>
+              </div>
+            </div>
+            <a href="https://www.asam.net/standards/detail/mcd-2-d/" target="_blank" rel="noreferrer"
+              className="shrink-0 text-[11px] text-cyan border border-cyan/30 rounded-full px-2.5 py-1 hover:bg-cyan/10 transition flex items-center gap-1">
+              <Icon name="ExternalLink" size={11} />Сайт
+            </a>
           </div>
-          <p className="pt-1">Когда у тебя будет описание параметров для конкретной марки — скажи мне, и я оформлю их в формат <span className="font-mono text-cyan">.adl.json</span> для загрузки в это приложение.</p>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            Международный стандарт ISO 22901. Описывает диагностические данные в формате ODX (XML). Именно в этом формате производители передают данные официальным партнёрам.
+          </div>
+          <div className="bg-secondary rounded-lg p-2.5 text-[11px] space-y-1 text-muted-foreground">
+            <div className="font-semibold text-foreground mb-1">Как использовать:</div>
+            <div>1. Скачать ODX-файл для нужной марки (если доступен публично или куплен)</div>
+            <div>2. Распарсить XML — теги <span className="font-mono text-cyan">{'<DIAG-SERVICE>'}</span>, <span className="font-mono text-cyan">{'<PARAM>'}</span></div>
+            <div>3. Сконвертировать в <span className="font-mono text-cyan">.adl.json</span> и загрузить сюда</div>
+          </div>
+        </div>
+
+        {/* 2. OpenDiag / GitHub */}
+        <div className="border-glow bg-card rounded-xl p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-purple-400/10 flex items-center justify-center shrink-0">
+                <Icon name="Github" size={16} className="text-purple-400" />
+              </div>
+              <div>
+                <div className="font-semibold text-sm">OpenDiagnostics / GitHub</div>
+                <div className="text-[11px] text-muted-foreground">Сообщество reverse engineering</div>
+              </div>
+            </div>
+            <a href="https://github.com/topics/obd2-diagnostics" target="_blank" rel="noreferrer"
+              className="shrink-0 text-[11px] text-purple-400 border border-purple-400/30 rounded-full px-2.5 py-1 hover:bg-purple-400/10 transition flex items-center gap-1">
+              <Icon name="ExternalLink" size={11} />GitHub
+            </a>
+          </div>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            Репозитории с уже готовыми расшифровками протоколов: <span className="text-foreground">pyOBD, python-OBD, freediag, OpenVehicles</span>. Содержат PID-таблицы, описания блоков, команды для конкретных марок.
+          </div>
+          <div className="bg-secondary rounded-lg p-2.5 text-[11px] space-y-1 text-muted-foreground">
+            <div className="font-semibold text-foreground mb-1">Полезные репозитории:</div>
+            <div>• <span className="font-mono text-cyan">github.com/brendan-w/python-OBD</span> — PID база</div>
+            <div>• <span className="font-mono text-cyan">github.com/nopacak/carscanner</span> — протоколы марок</div>
+            <div>• <span className="font-mono text-cyan">github.com/iDiagnostics</span> — VAG/BMW блоки</div>
+          </div>
+        </div>
+
+        {/* 3. Реверс-инжиниринг */}
+        <div className="border-glow bg-card rounded-xl p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-400/10 flex items-center justify-center shrink-0">
+                <Icon name="Radio" size={16} className="text-amber-400" />
+              </div>
+              <div>
+                <div className="font-semibold text-sm">Реверс-инжиниринг (SocketCAN)</div>
+                <div className="text-[11px] text-muted-foreground">Захват трафика с реального авто</div>
+              </div>
+            </div>
+            <a href="https://www.csselectronics.com/pages/can-bus-simple-intro-tutorial" target="_blank" rel="noreferrer"
+              className="shrink-0 text-[11px] text-amber-400 border border-amber-400/30 rounded-full px-2.5 py-1 hover:bg-amber-400/10 transition flex items-center gap-1">
+              <Icon name="ExternalLink" size={11} />Гайд
+            </a>
+          </div>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            Подключаешь SocketCAN-адаптер к OBD-II, запускаешь оригинальный сканер (ODIS, ISTA, Techstream) и записываешь весь CAN-трафик. Затем расшифровываешь команды и ответы.
+          </div>
+          <div className="bg-secondary rounded-lg p-2.5 text-[11px] space-y-1 text-muted-foreground">
+            <div className="font-semibold text-foreground mb-1">Что нужно:</div>
+            <div>1. Адаптер <span className="text-foreground">PCAN-USB</span> или <span className="text-foreground">CANable</span> (~30-80$)</div>
+            <div>2. Программа <span className="font-mono text-cyan">Wireshark</span> + плагин SocketCAN или <span className="font-mono text-cyan">SavvyCAN</span></div>
+            <div>3. Оригинальный сканер работает → ты записываешь все запросы/ответы</div>
+            <div>4. Расшифрованные команды оформляешь в <span className="font-mono text-cyan">.adl.json</span></div>
+          </div>
+        </div>
+
+        {/* 4. Дилерская документация */}
+        <div className="border-glow bg-card rounded-xl p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-green-400/10 flex items-center justify-center shrink-0">
+                <Icon name="BookOpen" size={16} className="text-green-400" />
+              </div>
+              <div>
+                <div className="font-semibold text-sm">Дилерская документация</div>
+                <div className="text-[11px] text-muted-foreground">WIS / ELSA / TIS / ISTA</div>
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            Официальные системы содержат описания всех параметров, адреса блоков, коды адаптаций. Доступ — через официальных дилеров или подписку.
+          </div>
+          <div className="bg-secondary rounded-lg p-2.5 text-[11px] space-y-1.5 text-muted-foreground">
+            <div className="font-semibold text-foreground mb-1">Системы по маркам:</div>
+            <div className="grid grid-cols-2 gap-1">
+              <div><span className="text-foreground">VW/Audi/Skoda</span> → ELSA / ODIS</div>
+              <div><span className="text-foreground">BMW/Mini</span> → ISTA-D / ISTA-P</div>
+              <div><span className="text-foreground">Toyota/Lexus</span> → TIS / Techstream</div>
+              <div><span className="text-foreground">Mercedes</span> → WIS / XENTRY</div>
+              <div><span className="text-foreground">Ford</span> → IDS / FJDS</div>
+              <div><span className="text-foreground">Hyundai/Kia</span> → GDS / KDS</div>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="border border-cyan/25 bg-cyan/5 rounded-xl p-4 text-xs text-muted-foreground leading-relaxed">
+          <span className="text-foreground font-semibold">Нашла данные?</span> Пришли мне описание параметров для нужной марки — я оформлю в формат <span className="font-mono text-cyan">.adl.json</span> и загрузишь через кнопку выше.
         </div>
       </div>
 
