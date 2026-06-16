@@ -1573,26 +1573,28 @@ function ScreenUpdates() {
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'vin',      label: 'VIN',        icon: 'Search',    num: '1' },
-  { id: 'vehicle',  label: 'Авто',       icon: 'Car',       num: '2' },
-  { id: 'history',  label: 'Сессии',     icon: 'History',   num: '4' },
-  { id: 'dtc',      label: 'Справочник', icon: 'BookOpen',  num: '' },
-  { id: 'updates',  label: 'Библиотеки', icon: 'Download',  num: '' },
+  { id: 'vin',      label: 'VIN',     icon: 'Search',   color: 'from-blue-500 to-blue-600' },
+  { id: 'vehicle',  label: 'Авто',    icon: 'Car',      color: 'from-violet-500 to-purple-600' },
+  { id: 'history',  label: 'Сессии',  icon: 'History',  color: 'from-emerald-500 to-teal-600' },
+  { id: 'dtc',      label: 'Коды',    icon: 'BookOpen', color: 'from-amber-500 to-orange-500' },
+  { id: 'updates',  label: 'Файлы',   icon: 'Download', color: 'from-pink-500 to-rose-500' },
 ];
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const Index = () => {
   const [tab, setTab] = useState('vin');
+  const [prevTab, setPrevTab] = useState('vin');
   const [btConnected, setBtConnected] = useState(false);
   const [btName, setBtName] = useState<string | null>(null);
   const [btError, setBtError] = useState('');
   const [btConnecting, setBtConnecting] = useState(false);
-  // Поднятый VIN-результат: передаётся в историю
   const [lastVin, setLastVin] = useState<VinResult | null>(null);
 
   useEffect(() => {
     elm327.onDisconnect(() => { setBtConnected(false); setBtName(null); });
   }, []);
+
+  const switchTab = (id: string) => { setPrevTab(tab); setTab(id); };
 
   const connectBluetooth = async () => {
     setBtConnecting(true); setBtError('');
@@ -1613,54 +1615,112 @@ const Index = () => {
     setBtConnected(false); setBtName(null);
   };
 
+  const activeNav = NAV.find(n => n.id === tab);
+
   return (
-    <div className="min-h-screen bg-background grid-bg pb-28">
-      <div className="max-w-xl mx-auto px-4 pt-6">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-glow">
-              <Icon name="Activity" size={18} className="text-[hsl(220,20%,8%)]" />
+    <div className="min-h-screen bg-background grid-bg flex flex-col">
+
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-40 glass border-b border-white/5 px-4 safe-top">
+        <div className="max-w-xl mx-auto flex items-center justify-between h-14">
+
+          {/* Логотип */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center shadow-glow shrink-0">
+              <Icon name="Zap" size={16} className="text-white" />
             </div>
-            <span className="font-display text-lg text-cyan-glow">Diagnostic</span>
+            <div>
+              <div className="font-display text-sm text-foreground leading-none">OBD Pro</div>
+              <div className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                {activeNav?.label}
+              </div>
+            </div>
           </div>
-          {/* BT статус в шапке */}
-          <button onClick={btConnected ? disconnectBluetooth : connectBluetooth} disabled={btConnecting}
-            className={`flex items-center gap-1.5 text-xs font-semibold border rounded-full px-3 py-1.5 transition ${btConnected ? 'border-green-400/40 text-green-400 bg-green-400/10' : 'border-border text-muted-foreground hover:border-primary/40 hover:text-cyan'}`}>
-            {btConnecting
-              ? <><Icon name="Loader" size={13} className="animate-spin" />Поиск...</>
-              : btConnected
-              ? <><span className="w-2 h-2 rounded-full bg-green-400" />{btName || 'ELM327'}</>
-              : <><Icon name="Bluetooth" size={13} />Bluetooth</>}
-          </button>
-        </header>
 
-        {/* BT ошибка */}
-        {btError && (
-          <div className="mb-4 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3 flex items-start gap-2">
+          {/* Bluetooth кнопка */}
+          <button
+            onClick={btConnected ? disconnectBluetooth : connectBluetooth}
+            disabled={btConnecting}
+            className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1.5 border transition-all active:scale-95 ${
+              btConnected
+                ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+                : btConnecting
+                ? 'border-blue-500/30 text-blue-400 bg-blue-500/10'
+                : 'border-white/10 text-muted-foreground bg-white/5 hover:border-blue-500/30 hover:text-blue-400'
+            }`}
+          >
+            {btConnecting ? (
+              <><Icon name="Loader2" size={12} className="animate-spin" /><span>Поиск...</span></>
+            ) : btConnected ? (
+              <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span>{btName || 'ELM327'}</span></>
+            ) : (
+              <><Icon name="Bluetooth" size={12} /><span>Подключить</span></>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* ── BT ошибка ── */}
+      {btError && (
+        <div className="max-w-xl mx-auto w-full px-4 pt-3 animate-fade-up">
+          <div className="flex items-start gap-2.5 text-xs text-red-400 bg-red-500/8 border border-red-500/20 rounded-2xl px-4 py-3">
             <Icon name="AlertCircle" size={14} className="shrink-0 mt-0.5" />
-            <div>{btError}</div>
+            <span>{btError}</span>
+            <button onClick={() => setBtError('')} className="ml-auto shrink-0 opacity-60 hover:opacity-100">
+              <Icon name="X" size={14} />
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Страницы */}
-        {tab === 'vin'     && <ScreenVin onVinDecoded={setLastVin} />}
-        {tab === 'vehicle' && <ScreenVehicle btConnected={btConnected} />}
-        {tab === 'history' && <ScreenHistory lastVin={lastVin} />}
-        {tab === 'dtc'     && <ScreenDTC />}
-        {tab === 'updates' && <ScreenUpdates />}
-      </div>
+      {/* ── Контент ── */}
+      <main className="flex-1 max-w-xl mx-auto w-full px-4 pt-5 pb-32">
+        <div key={tab} className="animate-fade-up">
+          {tab === 'vin'     && <ScreenVin onVinDecoded={setLastVin} />}
+          {tab === 'vehicle' && <ScreenVehicle btConnected={btConnected} />}
+          {tab === 'history' && <ScreenHistory lastVin={lastVin} />}
+          {tab === 'dtc'     && <ScreenDTC />}
+          {tab === 'updates' && <ScreenUpdates />}
+        </div>
+      </main>
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border-glow rounded-2xl px-2 py-2 flex items-center gap-1 w-[calc(100%-2rem)] max-w-sm">
-        {NAV.map(n => (
-          <button key={n.id} onClick={() => setTab(n.id)}
-            className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 flex-1 transition-all relative ${tab===n.id?'gradient-primary text-[hsl(220,20%,8%)] shadow-glow':'text-muted-foreground hover:text-foreground'}`}>
-            {n.num && <span className={`absolute top-1 right-1 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${tab===n.id?'bg-white/30':'bg-secondary'}`}>{n.num}</span>}
-            <Icon name={n.icon} size={20} />
-            <span className="text-[10px] font-semibold mt-0.5">{n.label}</span>
-          </button>
-        ))}
+      {/* ── Bottom Navigation ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/5 safe-bottom">
+        <div className="max-w-xl mx-auto flex items-center px-2 pt-2 pb-1">
+          {NAV.map(n => {
+            const active = tab === n.id;
+            return (
+              <button
+                key={n.id}
+                onClick={() => switchTab(n.id)}
+                className="flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all active:scale-90"
+              >
+                {/* Иконка с фоном */}
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                  active
+                    ? `bg-gradient-to-br ${n.color} shadow-glow scale-110`
+                    : 'bg-transparent'
+                }`}>
+                  <Icon
+                    name={n.icon}
+                    size={active ? 20 : 22}
+                    className={active ? 'text-white' : 'text-muted-foreground'}
+                  />
+                </div>
+                {/* Лейбл */}
+                <span className={`text-[10px] font-semibold transition-colors ${
+                  active ? 'text-foreground' : 'text-muted-foreground'
+                }`}>
+                  {n.label}
+                </span>
+                {/* Точка-индикатор */}
+                <span className={`w-1 h-1 rounded-full transition-all duration-300 ${
+                  active ? 'bg-blue-500 opacity-100' : 'opacity-0'
+                }`} />
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );

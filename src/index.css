@@ -2,46 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @layer base {
   :root {
-    --background: 220 20% 8%;
-    --foreground: 210 20% 92%;
+    /* ── Тёмная тема (основная) ── */
+    --background: 224 20% 6%; /* #0a0c14  — почти чёрный, синеватый */
+    --foreground: 210 25% 94%; /* #edf1f7  — мягкий белый */
 
-    --card: 220 18% 11%;
-    --card-foreground: 210 20% 92%;
+    --card: 224 18% 10%; /* #141720  — карточки */
+    --card-foreground: 210 25% 94%;
 
-    --popover: 220 18% 11%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 224 18% 10%;
+    --popover-foreground: 210 25% 94%;
 
-    --primary: 196 100% 47%;
-    --primary-foreground: 220 20% 8%;
+    /* Акцент — неоново-синий */
+    --primary: 217 100% 60%; /* #3b82ff  — яркий синий */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 210 20% 80%;
+    /* Вторичный — тёмно-серый с синевой */
+    --secondary: 224 15% 16%; /* #1e2130 */
+    --secondary-foreground: 210 20% 75%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 215 12% 50%;
+    --muted: 224 14% 13%; /* #181c27 */
+    --muted-foreground: 220 12% 48%; /* #6b7394 */
 
-    --accent: 38 95% 55%;
-    --accent-foreground: 220 20% 8%;
+    /* Акцент 2 — фиолетово-пурпурный */
+    --accent: 258 90% 66%; /* #8b5cf6 */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 55%;
+    --destructive: 0 75% 58%; /* #f05252 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 196 100% 47%;
+    --border: 224 15% 14%; /* #1a1f2e */
+    --input: 224 15% 14%;
+    --ring: 217 100% 60%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --sidebar-background: 220 20% 8%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 196 100% 47%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 15% 18%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 196 100% 47%;
+    /* Сайдбар */
+    --sidebar-background: 224 20% 6%;
+    --sidebar-foreground: 210 25% 94%;
+    --sidebar-primary: 217 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 15% 16%;
+    --sidebar-accent-foreground: 210 25% 94%;
+    --sidebar-border: 224 15% 14%;
+    --sidebar-ring: 217 100% 60%;
+
+    /* ── Кастомные токены ── */
+    --blue: 217 100% 60%; /* основной синий */
+    --blue-dim: 217 100% 60% / 0.12;
+    --purple: 258 90% 66%; /* фиолетовый */
+    --purple-dim: 258 90% 66% / 0.12;
+    --green: 142 76% 52%; /* зелёный успех */
+    --amber: 38 95% 56%; /* жёлтый */
+    --red: 0 75% 58%; /* красный */
   }
 }
 
@@ -50,96 +67,252 @@
     @apply border-border;
   }
 
+  html {
+    /* Убираем скролл в мобильном приложении */
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-family: "IBM Plex Sans", sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Запрет выделения текста на мобильном */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Разрешить выделение в полях ввода */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 
+/* ── Typography ──────────────────────────────────────────────────────────── */
 @layer utilities {
   .font-display {
-    font-family: "Rajdhani", sans-serif;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* ── Цвета ── */
+  .text-blue {
+    color: hsl(var(--blue));
+  }
+  .text-purple {
+    color: hsl(var(--purple));
+  }
+
+  /* Glow-тексты */
+  .text-blue-glow {
+    color: hsl(var(--blue));
+    text-shadow: 0 0 20px hsl(217 100% 60% / 0.5);
+  }
+  .text-purple-glow {
+    color: hsl(var(--purple));
+    text-shadow: 0 0 20px hsl(258 90% 66% / 0.5);
+  }
+  /* совместимость со старым кодом */
+  .text-cyan {
+    color: hsl(var(--blue));
+  }
+  .text-cyan-glow {
+    color: hsl(var(--blue));
+    text-shadow: 0 0 20px hsl(217 100% 60% / 0.5);
+  }
+
+  /* ── Градиенты ── */
   .gradient-primary {
     background: linear-gradient(
       135deg,
-      hsl(196 100% 47%) 0%,
-      hsl(210 100% 55%) 100%
+      hsl(217 100% 60%) 0%,
+      hsl(258 90% 66%) 100%
+    );
+  }
+  .gradient-card {
+    background: linear-gradient(
+      160deg,
+      hsl(224 18% 12%) 0%,
+      hsl(224 18% 9%) 100%
+    );
+  }
+  .gradient-success {
+    background: linear-gradient(
+      135deg,
+      hsl(142 76% 45%) 0%,
+      hsl(158 80% 42%) 100%
+    );
+  }
+  .gradient-danger {
+    background: linear-gradient(
+      135deg,
+      hsl(0 75% 58%) 0%,
+      hsl(15 85% 55%) 100%
     );
   }
 
+  /* ── Границы с свечением ── */
   .border-glow {
-    border: 1px solid hsl(196 100% 47% / 0.3);
+    border: 1px solid hsl(217 100% 60% / 0.2);
     box-shadow:
-      0 0 20px hsl(196 100% 47% / 0.08),
-      inset 0 1px 0 hsl(196 100% 47% / 0.1);
+      0 0 0 1px hsl(217 100% 60% / 0.05),
+      0 1px 3px hsl(224 20% 4% / 0.5);
   }
-
+  .border-glow-active {
+    border: 1px solid hsl(217 100% 60% / 0.5);
+    box-shadow:
+      0 0 16px hsl(217 100% 60% / 0.15),
+      0 0 0 1px hsl(217 100% 60% / 0.1);
+  }
   .border-glow-accent {
-    border: 1px solid hsl(38 95% 55% / 0.4);
-    box-shadow: 0 0 16px hsl(38 95% 55% / 0.12);
+    border: 1px solid hsl(258 90% 66% / 0.35);
+    box-shadow: 0 0 16px hsl(258 90% 66% / 0.1);
   }
-
   .border-glow-error {
-    border: 1px solid hsl(0 72% 55% / 0.45);
-    box-shadow: 0 0 16px hsl(0 72% 55% / 0.12);
+    border: 1px solid hsl(0 75% 58% / 0.4);
+    box-shadow: 0 0 16px hsl(0 75% 58% / 0.1);
+  }
+  .border-glow-success {
+    border: 1px solid hsl(142 76% 52% / 0.4);
+    box-shadow: 0 0 16px hsl(142 76% 52% / 0.1);
   }
 
+  /* ── Тени ── */
   .shadow-glow {
     box-shadow:
-      0 0 30px hsl(196 100% 47% / 0.2),
-      0 8px 32px hsl(220 20% 4% / 0.6);
+      0 0 24px hsl(217 100% 60% / 0.25),
+      0 8px 32px hsl(224 20% 3% / 0.7);
+  }
+  .shadow-card {
+    box-shadow:
+      0 1px 3px hsl(224 20% 3% / 0.4),
+      0 4px 16px hsl(224 20% 3% / 0.3);
   }
 
-  .text-cyan {
-    color: hsl(196 100% 47%);
-  }
-
-  .text-cyan-glow {
-    color: hsl(196 100% 47%);
-    text-shadow: 0 0 16px hsl(196 100% 47% / 0.6);
-  }
-
+  /* ── Фон ── */
   .grid-bg {
     background-image:
-      linear-gradient(hsl(196 100% 47% / 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(196 100% 47% / 0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
+      linear-gradient(hsl(217 100% 60% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(217 100% 60% / 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
+  /* Нойз-текстура для глубины */
+  .noise-bg::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Статусы диагностики ── */
   .status-ok {
-    color: hsl(142 72% 50%);
+    color: hsl(142 76% 52%);
   }
   .status-warn {
-    color: hsl(38 95% 55%);
+    color: hsl(38 95% 56%);
   }
   .status-error {
-    color: hsl(0 72% 60%);
+    color: hsl(0 75% 58%);
+  }
+
+  /* ── Стеклянный эффект ── */
+  .glass {
+    background: hsl(224 18% 10% / 0.85);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  }
+
+  /* ── Кнопки — общее ── */
+  .btn-primary {
+    @apply gradient-primary text-white font-semibold rounded-2xl px-6 py-3.5
+           shadow-glow transition-all active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-foreground font-medium rounded-2xl px-5 py-3
+           border border-white/5 transition-all active:scale-95;
+  }
+
+  /* ── Карточки ── */
+  .card-base {
+    @apply rounded-2xl border border-white/5 bg-card shadow-card transition-all;
+  }
+  .card-interactive {
+    @apply card-base active:scale-[0.98] active:bg-secondary/80;
+  }
+
+  /* ── Safe area для мобильных ── */
+  .safe-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
   }
 }
 
+/* ── Анимации ────────────────────────────────────────────────────────────── */
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 6px hsl(196 100% 47% / 0.5);
+    box-shadow: 0 0 8px hsl(217 100% 60% / 0.4);
   }
   50% {
     box-shadow:
-      0 0 18px hsl(196 100% 47% / 0.9),
-      0 0 30px hsl(196 100% 47% / 0.4);
+      0 0 24px hsl(217 100% 60% / 0.8),
+      0 0 40px hsl(217 100% 60% / 0.3);
   }
 }
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 @keyframes msg-in {
@@ -169,16 +342,105 @@
     transform: rotate(360deg);
   }
 }
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes nav-pop {
+  0% {
+    transform: scale(0.85) translateY(4px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05) translateY(-1px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
 
 .animate-pulse-glow {
   animation: pulse-glow 2.5s ease-in-out infinite;
 }
 .animate-fade-up {
-  animation: fade-up 0.35s ease-out both;
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .animate-msg-in {
   animation: msg-in 0.3s ease-out both;
 }
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+.animate-nav-pop {
+  animation: nav-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Задержки для stagger-анимаций */
+.delay-50 {
+  animation-delay: 50ms;
+}
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+/* Shimmer-скелетон */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(224 18% 13%) 0%,
+    hsl(224 15% 20%) 50%,
+    hsl(224 18% 13%) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* ── Скроллбар ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(224 15% 22%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(217 100% 60% / 0.5);
 }
