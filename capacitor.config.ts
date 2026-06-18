@@ -10,11 +10,17 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
   },
   plugins: {
-    Filesystem: {
-      // Разрешаем доступ к внешнему хранилищу Android
-    },
+    Filesystem: {},
     Preferences: {
       group: 'OBDProStorage',
+    },
+    BluetoothLe: {
+      displayStrings: {
+        scanning: 'Поиск OBD-адаптеров...',
+        cancel: 'Отмена',
+        availableDevices: 'Найденные адаптеры',
+        noDeviceFound: 'Адаптеры не найдены',
+      },
     },
   },
 };

@@ -1,22 +1,14 @@
-// ── Web Bluetooth API — ELM327 OBD-II ────────────────────────────────────────
+// ── ELM327 OBD-II Service ─────────────────────────────────────────────────────
 // Протокол: ELM327 AT-команды → OBD-II PIDs (SAE J1979)
-// Работает в Chrome Android 6+, Chrome Desktop
+// Транспорт: нативный BLE (APK) или Web Bluetooth (Chrome браузер)
+
+import { createBleTransport, type BleTransport } from './bleAdapter';
 
 export interface BluetoothState {
   connected: boolean;
   deviceName: string | null;
   error: string | null;
 }
-
-// ELM327 service/characteristic UUIDs (SPP over BLE)
-const OBD_SERVICE_UUID      = '0000fff0-0000-1000-8000-00805f9b34fb';
-const OBD_WRITE_CHAR_UUID   = '0000fff2-0000-1000-8000-00805f9b34fb';
-const OBD_NOTIFY_CHAR_UUID  = '0000fff1-0000-1000-8000-00805f9b34fb';
-
-// Альтернативные UUID для разных версий ELM327 BLE
-const ALT_SERVICE_UUID      = '00001101-0000-1000-8000-00805f9b34fb';
-const VLINK_SERVICE_UUID    = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2';
-const VLINK_WRITE_CHAR_UUID = 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
 
 // OBD-II PIDs (Mode 01)
 export const OBD_PIDS = {
@@ -62,115 +54,38 @@ export interface LiveParam {
 }
 
 class ELM327Service {
-  private device: BluetoothDevice | null = null;
-  private server: BluetoothRemoteGATTServer | null = null;
-  private writeChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private notifyChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private responseBuffer = '';
-  private pendingResolve: ((v: string) => void) | null = null;
-  private onDisconnectCb: (() => void) | null = null;
+  private transport: BleTransport = createBleTransport();
+  private deviceName: string | null = null;
 
   isConnected(): boolean {
-    return !!(this.device?.gatt?.connected);
+    return this.transport.isConnected();
   }
 
   getDeviceName(): string | null {
-    return this.device?.name || null;
+    return this.deviceName;
   }
 
   onDisconnect(cb: () => void) {
-    this.onDisconnectCb = cb;
+    this.transport.onDisconnect(cb);
   }
 
   async connect(): Promise<void> {
-    if (!navigator.bluetooth) {
-      throw new Error('Web Bluetooth не поддерживается в этом браузере. Используйте Chrome на Android или Chrome Desktop.');
-    }
-
-    // Запрашиваем устройство с фильтром по сервисам ELM327
-    this.device = await navigator.bluetooth.requestDevice({
-      filters: [
-        { namePrefix: 'OBD' },
-        { namePrefix: 'ELM' },
-        { namePrefix: 'V-LINK' },
-        { namePrefix: 'OBDII' },
-        { namePrefix: 'Vgate' },
-        { namePrefix: 'OBDLink' },
-        { namePrefix: 'LELink' },
-        { namePrefix: 'Konnwei' },
-        { namePrefix: 'TONWON' },
-      ],
-      optionalServices: [
-        OBD_SERVICE_UUID,
-        ALT_SERVICE_UUID,
-        VLINK_SERVICE_UUID,
-        'battery_service',
-      ],
-    });
-
-    this.device.addEventListener('gattserverdisconnected', () => {
-      this.cleanup();
-      this.onDisconnectCb?.();
-    });
-
-    this.server = await this.device.gatt!.connect();
-
-    // Пробуем найти сервис — разные адаптеры используют разные UUID
-    let service: BluetoothRemoteGATTService | null = null;
-    let writeUUID = OBD_WRITE_CHAR_UUID;
-    let notifyUUID = OBD_NOTIFY_CHAR_UUID;
-
-    for (const [svcUUID, wUUID, nUUID] of [
-      [OBD_SERVICE_UUID,   OBD_WRITE_CHAR_UUID,   OBD_NOTIFY_CHAR_UUID],
-      [VLINK_SERVICE_UUID, VLINK_WRITE_CHAR_UUID,  VLINK_WRITE_CHAR_UUID],
-    ]) {
-      try {
-        service = await this.server.getPrimaryService(svcUUID);
-        writeUUID = wUUID; notifyUUID = nUUID;
-        break;
-      } catch { /* пробуем следующий */ }
-    }
-
-    if (!service) throw new Error('Адаптер ELM327 найден, но сервис OBD не обнаружен. Попробуйте другой адаптер или обновите прошивку.');
-
-    this.writeChar  = await service.getCharacteristic(writeUUID);
-    this.notifyChar = await service.getCharacteristic(notifyUUID);
-
-    await this.notifyChar.startNotifications();
-    this.notifyChar.addEventListener('characteristicvaluechanged', (e: Event) => {
-      const target = e.target as BluetoothRemoteGATTCharacteristic;
-      const chunk = new TextDecoder().decode(target.value!);
-      this.responseBuffer += chunk;
-      if (this.responseBuffer.includes('>') || this.responseBuffer.includes('\r')) {
-        this.pendingResolve?.(this.responseBuffer);
-        this.pendingResolve = null;
-        this.responseBuffer = '';
-      }
-    });
+    this.transport = createBleTransport();
+    this.deviceName = await this.transport.connect();
 
     // Инициализация ELM327
-    await this.sendATCommand('ATZ');    // Сброс
+    await this.sendATCommand('ATZ');
     await this.delay(1000);
-    await this.sendATCommand('ATE0');   // Echo off
-    await this.sendATCommand('ATL0');   // Linefeeds off
-    await this.sendATCommand('ATS0');   // Spaces off
-    await this.sendATCommand('ATH0');   // Headers off
-    await this.sendATCommand('ATSP0'); // Auto protocol
+    await this.sendATCommand('ATE0');
+    await this.sendATCommand('ATL0');
+    await this.sendATCommand('ATS0');
+    await this.sendATCommand('ATH0');
+    await this.sendATCommand('ATSP0');
   }
 
   async disconnect(): Promise<void> {
-    if (this.device?.gatt?.connected) {
-      this.device.gatt.disconnect();
-    }
-    this.cleanup();
-  }
-
-  private cleanup() {
-    this.writeChar = null;
-    this.notifyChar = null;
-    this.server = null;
-    this.pendingResolve = null;
-    this.responseBuffer = '';
+    await this.transport.disconnect();
+    this.deviceName = null;
   }
 
   private delay(ms: number) {
@@ -178,13 +93,7 @@ class ELM327Service {
   }
 
   private async sendRaw(data: string): Promise<string> {
-    if (!this.writeChar) throw new Error('Не подключено');
-    return new Promise((resolve, reject) => {
-      this.pendingResolve = resolve;
-      const encoded = new TextEncoder().encode(data + '\r');
-      this.writeChar!.writeValue(encoded).catch(reject);
-      setTimeout(() => { this.pendingResolve = null; resolve('TIMEOUT'); }, 3000);
-    });
+    return this.transport.sendRaw(data);
   }
 
   async sendATCommand(cmd: string): Promise<string> {
