@@ -150,6 +150,80 @@ const TOY_PARKING = (): EcuBlock => ({
 export const TOYOTA_MAKE: VehicleMake = {
   id: 'toyota', name: 'Toyota', logo: '🔴', region: 'asia',
   models: [
+    // ── Corolla E110 (1995–2002) ──
+    {
+      id: 'corolla_e110', name: 'Corolla E110 (1995–2002)',
+      years: [1995,1996,1997,1998,1999,2000,2001,2002],
+      ecus: [
+        TOY_ENGINE('4A-FE/5A-FE/7A-FE/3S-FE', '0x10', 'ISO 9141-2 (K-Line)'),
+        TOY_ABS('ABS (при наличии)', '0x28'),
+        TOY_AIRBAG(),
+        TOY_INSTRUMENT(),
+      ],
+    },
+
+    // ── Corolla E120/E130 (2000–2006) ──
+    {
+      id: 'corolla_e120', name: 'Corolla E120 / E130 (2000–2006)',
+      years: [2000,2001,2002,2003,2004,2005,2006],
+      ecus: [
+        TOY_ENGINE('1ZZ-FE/2ZZ-GE/1NZ-FE', '0x10', 'KWP2000 / ISO 14230-4 (K-Line)'),
+        TOY_ABS('ABS/VSC', '0x28'),
+        TOY_TRANSMISSION('АКПП U341E/U341F'),
+        TOY_AIRBAG(),
+        TOY_CLIMATE(),
+        TOY_EPS(),
+        TOY_INSTRUMENT(),
+      ],
+    },
+
+    // ── Corolla E150 (2006–2013) ──
+    {
+      id: 'corolla_e150', name: 'Corolla E150 (2006–2013)',
+      years: [2006,2007,2008,2009,2010,2011,2012,2013],
+      ecus: [
+        TOY_ENGINE('1ZR-FE/2ZR-FE/1NZ-FE', '0x10', 'Toyota-CAN / ISO 15765-4'),
+        TOY_ABS('ABS/VSC', '0x28'),
+        TOY_TRANSMISSION('АКПП U341E/U760E'),
+        TOY_AIRBAG(),
+        TOY_CLIMATE(),
+        TOY_EPS(),
+        TOY_INSTRUMENT(),
+      ],
+    },
+
+    // ── Corolla E160/E170 (2012–2019) ──
+    {
+      id: 'corolla_e160', name: 'Corolla E160 / E170 (2012–2019)',
+      years: [2012,2013,2014,2015,2016,2017,2018,2019],
+      ecus: [
+        TOY_ENGINE('1ZR-FAE/2ZR-FAE', '0x10'),
+        TOY_ABS('ABS/VSC/TRC'),
+        TOY_TRANSMISSION('АКПП U760E/CVT'),
+        TOY_AIRBAG(),
+        TOY_CLIMATE(),
+        TOY_EPS(),
+        TOY_INSTRUMENT(),
+      ],
+    },
+
+    // ── Corolla E210 (2018–2024) ──
+    {
+      id: 'corolla_e210', name: 'Corolla E210 (2018–2024)',
+      years: [2018,2019,2020,2021,2022,2023,2024],
+      ecus: [
+        TOY_ENGINE('2ZR-FAE/M20A-FKS/M20A-FXS', '0x10'),
+        TOY_ABS('ABS/VSC/TRC/Pre-Collision'),
+        TOY_TRANSMISSION('АКПП K120 CVT / e-CVT Hybrid'),
+        TOY_AIRBAG(),
+        TOY_CLIMATE(),
+        TOY_EPS(),
+        TOY_INSTRUMENT(),
+        TOY_PARKING(),
+        TOY_HYBRID(),
+      ],
+    },
+
     // ── Camry ──
     {
       id: 'camry', name: 'Camry (V50/V55/V70)',
