@@ -2,460 +2,518 @@
   "makeId": "toyota",
   "modelId": "corolla",
   "name": "Toyota Corolla",
-  "generations": ["E120", "E140", "E150", "E160", "E170", "E210"],
-  "years": [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
-  "protocol_version": "1.0",
-  "source": "OBD-II ISO 15765 / Toyota Techstream compatible",
-  "ecus": [
-    {
-      "id": "engine",
-      "name": "ЭБУ двигателя (ECM)",
-      "address": "0x7E0",
-      "response_address": "0x7E8",
-      "protocol": "CAN ISO 15765-4",
-      "baudrate": 500000,
-      "functions": [
+  "years": [1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024],
+  "generations": [
+    { "id": "e110", "name": "E110", "yearFrom": 1995, "yearTo": 2002, "engines": "4A-FE / 5A-FE / 7A-FE / 3S-FE", "protocol": "ISO 9141-2 / K-Line" },
+    { "id": "e120", "name": "E120 / E130", "yearFrom": 2000, "yearTo": 2006, "engines": "1ZZ-FE / 2ZZ-GE / 1NZ-FE", "protocol": "KWP2000 / ISO 14230-4" },
+    { "id": "e150", "name": "E150", "yearFrom": 2006, "yearTo": 2013, "engines": "1ZR-FE / 2ZR-FE / 1NZ-FE", "protocol": "CAN ISO 15765-4" },
+    { "id": "e160", "name": "E160 / E170", "yearFrom": 2012, "yearTo": 2018, "engines": "1ZR-FAE / 2ZR-FAE", "protocol": "CAN ISO 15765-4" },
+    { "id": "e210", "name": "E210", "yearFrom": 2018, "yearTo": 2024, "engines": "2ZR-FAE / M20A-FKS / M20A-FXS (Hybrid)", "protocol": "CAN ISO 15765-4 / Toyota UDS" }
+  ],
+  "ecusByGeneration": {
+    "e110": {
+      "yearFrom": 1995,
+      "yearTo": 2002,
+      "note": "K-Line протокол (ISO 9141-2). OBD-II разъём есть, но часть функций — Toyota-specific через K-Line.",
+      "ecus": [
         {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC",
-          "type": "special",
-          "description": "Считать все сохранённые коды неисправностей двигателя",
-          "service": "0x03",
-          "note": "Стандарт OBD-II. Возвращает P-коды (P0xxx, P1xxx Toyota-specific)"
-        },
-        {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC",
-          "type": "special",
-          "description": "Очистить все коды неисправностей и сбросить статусы готовности",
-          "service": "0x04",
-          "warning": "После сброса коды готовности (readiness monitors) потребуют поездку для восстановления"
-        },
-        {
-          "id": "live_data",
-          "name": "Поток данных (Live Data)",
-          "type": "special",
-          "description": "Параметры двигателя в реальном времени",
-          "service": "0x01",
-          "pids": [
-            { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
-            { "pid": "0x0C", "name": "Обороты двигателя (RPM)", "unit": "rpm", "formula": "(256A+B)/4" },
-            { "pid": "0x0D", "name": "Скорость автомобиля", "unit": "км/ч", "formula": "A" },
-            { "pid": "0x0F", "name": "Температура воздуха на впуске", "unit": "°C", "formula": "A-40" },
-            { "pid": "0x10", "name": "Расход воздуха (MAF)", "unit": "г/с", "formula": "(256A+B)/100" },
-            { "pid": "0x11", "name": "Положение дроссельной заслонки", "unit": "%", "formula": "A*100/255" },
-            { "pid": "0x2F", "name": "Уровень топлива", "unit": "%", "formula": "A*100/255" },
-            { "pid": "0x46", "name": "Температура окружающей среды", "unit": "°C", "formula": "A-40" },
-            { "pid": "0x5C", "name": "Температура моторного масла", "unit": "°C", "formula": "A-40" }
+          "id": "engine",
+          "name": "ЭБУ двигателя (ECM) — 4A-FE / 5A-FE / 7A-FE",
+          "address": "0x10",
+          "protocol": "ISO 9141-2 (K-Line)",
+          "baudrate": 10400,
+          "note": "Старый протокол K-Line. Адрес 0x10 — Toyota ECM. Скорость инициализации 5 Baud.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов DTC", "type": "special", "description": "Считать коды неисправностей P-коды (OBD-II Mode 03)", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов DTC", "type": "special", "description": "Сбросить все коды неисправностей", "service": "0x04", "warning": "После сброса мониторы готовности сбрасываются" },
+            { "id": "live_data", "name": "Поток данных двигателя", "type": "special", "description": "Обороты, температура, дроссель, коррекции топлива", "service": "0x01",
+              "pids": [
+                { "pid": "0x0C", "name": "Обороты двигателя", "unit": "RPM", "formula": "(256A+B)/4" },
+                { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x11", "name": "Положение дросселя", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x0D", "name": "Скорость автомобиля", "unit": "км/ч", "formula": "A" },
+                { "pid": "0x06", "name": "Краткосрочная коррекция топлива (STFT)", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x07", "name": "Долгосрочная коррекция топлива (LTFT)", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x0F", "name": "Температура воздуха на впуске (IAT)", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x0E", "name": "Угол опережения зажигания", "unit": "°", "formula": "A/2-64" },
+                { "pid": "0x14", "name": "Лямбда-зонд B1S1 (до катализатора)", "unit": "В", "formula": "A/200" },
+                { "pid": "0x42", "name": "Напряжение бортовой сети", "unit": "В", "formula": "(256A+B)/1000" }
+              ]
+            },
+            { "id": "readiness", "name": "Готовность OBD-II мониторов", "type": "special", "description": "Статус мониторов готовности: катализатор, лямбда, EVAP, пропуски", "service": "0x01", "pid": "0x01" },
+            { "id": "idle_adapt", "name": "Адаптация холостого хода", "type": "adaptation", "description": "Обучение ЭБУ оборотам ХХ после сброса или замены АКБ",
+              "steps": [
+                "Прогреть двигатель до 80-90°C",
+                "Заглушить двигатель на 30 секунд",
+                "Запустить и дать поработать 10 минут без нагрузки"
+              ]
+            }
           ]
         },
         {
-          "id": "freeze_frame",
-          "name": "Стоп-кадр (Freeze Frame)",
-          "type": "special",
-          "description": "Данные параметров в момент возникновения неисправности",
-          "service": "0x02"
-        },
-        {
-          "id": "readiness",
-          "name": "Статусы готовности (Readiness Monitors)",
-          "type": "special",
-          "description": "Проверка выполнения тестов систем (катализатор, O2, испарительная и т.д.)",
-          "service": "0x01",
-          "pid": "0x01"
-        },
-        {
-          "id": "oil_reset",
-          "name": "Сброс интервала замены масла",
-          "type": "service",
-          "description": "Сброс счётчика пробега до следующего ТО (Toyota Maintenance Required Light)",
-          "method": "toyota_specific",
-          "note": "На Corolla E150/E160/E170/E210: удерживай кнопку ODO/TRIP при включении зажигания до мигания лампы MAINT REQD. Или через OBD: SID 0x21, DID 0x01",
-          "service_sid": "0x21",
-          "service_did": "0x01"
-        },
-        {
-          "id": "throttle_reset",
-          "name": "Сброс адаптации дроссельной заслонки",
-          "type": "adaptation",
-          "description": "Обнуление адаптивных данных электронного дросселя (ETCS). Требуется после чистки или замены дросселя",
-          "method": "toyota_specific",
-          "steps": [
-            "Зажигание ON, двигатель не запускать",
-            "Педаль газа нажать до упора и удерживать 3 секунды",
-            "Педаль газа отпустить",
-            "Ключ в положение OFF, ждать 5 секунд",
-            "Запустить двигатель — холостой ход нормализуется в течение 2-3 минут"
-          ],
-          "warning": "Не нажимать газ первые 2 минуты после процедуры"
-        },
-        {
-          "id": "idle_adapt",
-          "name": "Адаптация холостого хода",
-          "type": "adaptation",
-          "description": "Автоматическое обучение ЭБУ оборотам холостого хода после сброса или замены АКБ",
-          "steps": [
-            "Прогреть двигатель до рабочей температуры (80-90°C)",
-            "Заглушить двигатель на 30 секунд",
-            "Запустить двигатель и дать поработать 10 минут на холостом ходу без нагрузки",
-            "Включить кондиционер на 5 минут (для адаптации с кондиционером)"
+          "id": "abs",
+          "name": "Блок ABS (при наличии)",
+          "address": "0x28",
+          "protocol": "ISO 9141-2 (K-Line)",
+          "baudrate": 10400,
+          "note": "ABS устанавливался опционально на E110",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов ABS", "type": "special", "description": "Коды неисправностей датчиков скорости и гидроблока ABS", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов ABS", "type": "special", "description": "Сброс кодов ошибок ABS", "service": "0x04" }
           ]
         },
         {
-          "id": "injector_clean",
-          "name": "Принудительная очистка форсунок",
-          "type": "activation",
-          "description": "Активация цикла впрыска для промывки форсунок (только с подключённым оборудованием)",
-          "service_sid": "0x31",
-          "service_did": "0x0110",
-          "warning": "Только на заглушённом двигателе при наличии топлива в системе"
-        },
-        {
-          "id": "vvti_check",
-          "name": "Тест системы VVT-i",
-          "type": "special",
-          "description": "Проверка работы системы изменения фаз газораспределения VVT-i (Variable Valve Timing)",
-          "pid": "0x0E",
-          "note": "Угол опережения зажигания должен изменяться при изменении нагрузки. Типовые значения: -10° до +40°"
-        },
-        {
-          "id": "o2_sensor",
-          "name": "Датчики кислорода (O2/Lambda)",
-          "type": "special",
-          "description": "Мониторинг переднего (до катализатора) и заднего (после) лямбда-зондов",
-          "service": "0x05",
-          "note": "Corolla 1ZZ-FE/2ZR-FE: датчик 1 — управляющий, датчик 2 — диагностический катализатора"
+          "id": "airbag",
+          "name": "Блок SRS / Airbag",
+          "address": "0x52",
+          "protocol": "ISO 9141-2 (K-Line)",
+          "baudrate": 10400,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов SRS", "type": "special", "description": "Коды неисправностей подушек и ремней безопасности", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов SRS", "type": "special", "description": "Сброс кодов SRS", "service": "0x04", "warning": "⚠️ Отключить АКБ на 30 сек перед работой с SRS!" }
+          ]
         }
       ]
     },
-    {
-      "id": "abs",
-      "name": "ABS / VSC / TRC (тормозная система)",
-      "address": "0x7E1",
-      "response_address": "0x7E9",
-      "protocol": "CAN ISO 15765-4",
-      "baudrate": 500000,
-      "note": "VSC — Vehicle Stability Control, TRC — Traction Control. Присутствует с 2002 г. (E120 опционально, E140+ стандартно)",
-      "functions": [
+    "e120": {
+      "yearFrom": 2000,
+      "yearTo": 2006,
+      "note": "KWP2000 (ISO 14230-4) через K-Line. Переходный период — часть машин имеет CAN для некоторых блоков.",
+      "ecus": [
         {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (ABS/VSC)",
-          "type": "special",
-          "description": "Коды неисправностей тормозной системы. C-коды (C0xxx — стандартные, C1xxx — Toyota-specific)",
-          "service": "0x03"
-        },
-        {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (ABS/VSC)",
-          "type": "special",
-          "description": "Очистить коды ошибок ABS/VSC/TRC",
-          "service": "0x04"
-        },
-        {
-          "id": "live_data",
-          "name": "Поток данных ABS",
-          "type": "special",
-          "description": "Скорости колёс, давление тормозной жидкости, положение педали тормоза",
-          "note": "Скорости всех 4 колёс в км/ч, сигнал датчика педали тормоза, флаги активации ABS/VSC"
-        },
-        {
-          "id": "brake_bleed",
-          "name": "Прокачка тормозов с насосом ABS",
-          "type": "activation",
-          "description": "Принудительная активация насоса ABS для прокачки при замене тормозной жидкости или главного тормозного цилиндра",
-          "service_sid": "0x31",
-          "service_did": "0x0101",
-          "warning": "Только при подключённом диагностическом оборудовании. Педаль тормоза должна быть отпущена"
-        },
-        {
-          "id": "wheel_speed_calib",
-          "name": "Калибровка датчиков скорости колёс",
-          "type": "adaptation",
-          "description": "Инициализация датчиков ABS после замены ступичного подшипника или датчика",
-          "warning": "Проехать прямо 20 км/ч в течение 10 секунд после выполнения"
-        }
-      ]
-    },
-    {
-      "id": "airbag",
-      "name": "SRS / Airbag (подушки безопасности)",
-      "address": "0x7D0",
-      "response_address": "0x7D8",
-      "protocol": "CAN ISO 15765-4",
-      "baudrate": 500000,
-      "functions": [
-        {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (SRS)",
-          "type": "special",
-          "description": "Коды неисправностей системы подушек безопасности и преднатяжителей ремней. B-коды (B1xxx Toyota SRS)",
-          "service": "0x03"
-        },
-        {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (SRS)",
-          "type": "special",
-          "description": "Очистить коды ошибок SRS",
-          "service": "0x04",
-          "warning": "Перед сбросом устранить все неисправности. Лампа SRS не должна гореть после сброса"
-        },
-        {
-          "id": "live_data",
-          "name": "Поток данных SRS",
-          "type": "special",
-          "description": "Состояние датчиков удара, состояние цепей пиропатронов, напряжение резервного конденсатора"
-        }
-      ]
-    },
-    {
-      "id": "instrument",
-      "name": "Комбинация приборов (IC)",
-      "address": "0x720",
-      "response_address": "0x728",
-      "protocol": "CAN ISO 15765-4 / Toyota-CAN",
-      "baudrate": 500000,
-      "functions": [
-        {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (щиток)",
-          "type": "special",
-          "description": "Коды неисправностей комбинации приборов",
-          "service": "0x03"
-        },
-        {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (щиток)",
-          "type": "special",
-          "description": "Очистить коды ошибок щитка приборов",
-          "service": "0x04"
-        },
-        {
-          "id": "odo_check",
-          "name": "Одометр / пробег",
-          "type": "special",
-          "description": "Чтение текущего пробега автомобиля из щитка приборов",
-          "service_sid": "0x21",
-          "service_did": "0xF10B"
-        }
-      ]
-    },
-    {
-      "id": "efi_throttle",
-      "name": "Электронный дроссель (ETCS-i)",
-      "address": "0x7E0",
-      "response_address": "0x7E8",
-      "protocol": "CAN ISO 15765-4",
-      "baudrate": 500000,
-      "note": "Управляется через основной ЭБУ двигателя. Отдельный адрес только на некоторых версиях",
-      "functions": [
-        {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (дроссель)",
-          "type": "special",
-          "description": "Коды P0120-P0124 (датчик положения педали), P0220-P0224 (датчик дросселя)",
-          "service": "0x03"
-        },
-        {
-          "id": "live_data",
-          "name": "Параметры дросселя",
-          "type": "special",
-          "description": "Положение заслонки, положение педали акселератора, целевое и фактическое положение",
-          "pids": [
-            { "pid": "0x11", "name": "Абсолютное положение дросселя", "unit": "%", "formula": "A*100/255" },
-            { "pid": "0x45", "name": "Положение педали акселератора D", "unit": "%", "formula": "A*100/255" },
-            { "pid": "0x49", "name": "Положение педали акселератора E", "unit": "%", "formula": "A*100/255" }
+          "id": "engine",
+          "name": "ЭБУ двигателя (ECM) — 1ZZ-FE / 2ZZ-GE / 1NZ-FE",
+          "address": "0x10",
+          "protocol": "KWP2000 / ISO 14230-4 (K-Line)",
+          "baudrate": 10400,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов DTC", "type": "special", "description": "Коды неисправностей двигателя (P-коды)", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов DTC", "type": "special", "description": "Сброс всех кодов DTC", "service": "0x04", "warning": "Мониторы готовности сбрасываются — нужна поездка для восстановления" },
+            { "id": "live_data", "name": "Поток данных двигателя", "type": "special", "description": "Параметры двигателя в реальном времени", "service": "0x01",
+              "pids": [
+                { "pid": "0x0C", "name": "Обороты двигателя", "unit": "RPM", "formula": "(256A+B)/4" },
+                { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x11", "name": "Положение дросселя (ETCS-i)", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x10", "name": "Расход воздуха (MAF)", "unit": "г/с", "formula": "(256A+B)/100" },
+                { "pid": "0x0B", "name": "Давление во впуске (MAP)", "unit": "кПа", "formula": "A" },
+                { "pid": "0x0D", "name": "Скорость автомобиля", "unit": "км/ч", "formula": "A" },
+                { "pid": "0x06", "name": "STFT (краткосрочная коррекция)", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x07", "name": "LTFT (долгосрочная коррекция)", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x0E", "name": "Угол опережения зажигания", "unit": "°", "formula": "A/2-64" },
+                { "pid": "0x14", "name": "O2 датчик B1S1", "unit": "В", "formula": "A/200" },
+                { "pid": "0x15", "name": "O2 датчик B1S2 (после катализатора)", "unit": "В", "formula": "A/200" },
+                { "pid": "0x42", "name": "Напряжение бортовой сети", "unit": "В", "formula": "(256A+B)/1000" }
+              ]
+            },
+            { "id": "readiness", "name": "Готовность OBD-II мониторов", "type": "special", "description": "Статус мониторов: катализатор, лямбда, EVAP, пропуски зажигания", "service": "0x01", "pid": "0x01" },
+            { "id": "freeze_frame", "name": "Стоп-кадр (Freeze Frame)", "type": "special", "description": "Параметры на момент появления ошибки DTC", "service": "0x02" },
+            {
+              "id": "throttle_reset",
+              "name": "Сброс адаптации дросселя (ETCS-i)",
+              "type": "adaptation",
+              "description": "Обнуление адаптивных данных электронного дросселя после чистки или замены",
+              "steps": [
+                "Зажигание ON, двигатель НЕ запускать",
+                "Педаль газа нажать до упора, удерживать 3 сек",
+                "Педаль газа отпустить",
+                "Ключ OFF, ждать 5 сек",
+                "Запустить двигатель — ХХ нормализуется за 2-3 мин"
+              ],
+              "warning": "Не нажимать газ первые 2 минуты после процедуры"
+            },
+            { "id": "idle_adapt", "name": "Адаптация холостого хода", "type": "adaptation", "description": "Обучение оборотов ХХ после замены АКБ или чистки дросселя",
+              "steps": [
+                "Прогреть двигатель до 80-90°C",
+                "Заглушить на 30 секунд",
+                "Запустить, дать поработать 10 минут без нагрузки",
+                "Включить кондиционер на 5 минут"
+              ]
+            },
+            { "id": "map_reset", "name": "Сброс топливных адаптаций (LTFT)", "type": "adaptation", "description": "Обнуление долгосрочных коррекций топлива после замены датчиков или чистки форсунок", "warning": "После сброса обкатка 15-20 мин езды" }
           ]
         },
         {
-          "id": "throttle_reset",
-          "name": "Инициализация дросселя",
-          "type": "adaptation",
-          "description": "Сброс адаптивных данных ETCS-i и повторное обучение. Выполнять после чистки или замены дросселя",
-          "service_sid": "0x31",
-          "service_did": "0x0121",
-          "warning": "Двигатель должен быть заглушён. После процедуры завести и прогреть до 80°C"
+          "id": "abs",
+          "name": "ABS / VSC (тормозная система)",
+          "address": "0x28",
+          "protocol": "KWP2000 / ISO 14230-4 (K-Line)",
+          "baudrate": 10400,
+          "note": "VSC опционально на E120 с 2002 г.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов ABS/VSC", "type": "special", "description": "C-коды тормозной системы", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов ABS/VSC", "type": "special", "description": "Сброс кодов ABS/VSC", "service": "0x04" },
+            { "id": "live_data", "name": "Скорости колёс", "type": "special", "description": "Скорости 4 колёс в км/ч, статус ABS" }
+          ]
+        },
+        {
+          "id": "airbag",
+          "name": "SRS / Airbag",
+          "address": "0x52",
+          "protocol": "KWP2000 / ISO 14230-4 (K-Line)",
+          "baudrate": 10400,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов SRS", "type": "special", "description": "B-коды подушек и ремней безопасности", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов SRS", "type": "special", "description": "Сброс кодов SRS", "service": "0x04", "warning": "⚠️ Работа с SRS опасна! Отключить АКБ на 30 сек." }
+          ]
+        },
+        {
+          "id": "transmission",
+          "name": "Блок управления АКПП (U341E)",
+          "address": "0x28",
+          "protocol": "KWP2000 / ISO 14230-4 (K-Line)",
+          "baudrate": 10400,
+          "note": "4-ступенчатая АКПП U341E / U341F. На механике этого блока нет.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов АКПП", "type": "special", "description": "Коды неисправностей трансмиссии", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов АКПП", "type": "special", "description": "Сброс кодов АКПП", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных АКПП", "type": "special", "description": "Температура масла АКПП, текущая передача, скорость входного вала" }
+          ]
         }
       ]
     },
-    {
-      "id": "climate",
-      "name": "Климат-контроль / кондиционер (A/C)",
-      "address": "0x750",
-      "response_address": "0x758",
-      "protocol": "Toyota-CAN",
-      "baudrate": 500000,
-      "note": "Присутствует при наличии кондиционера. Ручной A/C — только через реле, не диагностируется",
-      "functions": [
+    "e150": {
+      "yearFrom": 2006,
+      "yearTo": 2013,
+      "note": "CAN ISO 15765-4 500 кбит/с. Первое поколение Corolla на CAN-шине. Двигатели 1ZR-FE / 2ZR-FE / 1NZ-FE.",
+      "ecus": [
         {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (климат)",
-          "type": "special",
-          "description": "Коды неисправностей системы кондиционирования",
-          "service": "0x03"
+          "id": "engine",
+          "name": "ЭБУ двигателя (ECM) — 1ZR-FE / 2ZR-FE",
+          "address": "0x7E0",
+          "response_address": "0x7E8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов DTC", "type": "special", "description": "P-коды двигателя", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов DTC", "type": "special", "description": "Сброс кодов DTC", "service": "0x04", "warning": "Мониторы готовности сбрасываются" },
+            { "id": "live_data", "name": "Поток данных двигателя", "type": "special", "description": "Полный набор параметров двигателя", "service": "0x01",
+              "pids": [
+                { "pid": "0x0C", "name": "Обороты двигателя", "unit": "RPM", "formula": "(256A+B)/4" },
+                { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x11", "name": "Положение дросселя", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x10", "name": "Расход воздуха (MAF)", "unit": "г/с", "formula": "(256A+B)/100" },
+                { "pid": "0x0D", "name": "Скорость автомобиля", "unit": "км/ч", "formula": "A" },
+                { "pid": "0x06", "name": "STFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x07", "name": "LTFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x0E", "name": "Угол опережения зажигания", "unit": "°", "formula": "A/2-64" },
+                { "pid": "0x0F", "name": "Температура воздуха на впуске", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x14", "name": "O2 датчик B1S1", "unit": "В", "formula": "A/200" },
+                { "pid": "0x15", "name": "O2 датчик B1S2", "unit": "В", "formula": "A/200" },
+                { "pid": "0x2F", "name": "Уровень топлива", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x5C", "name": "Температура масла двигателя", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x42", "name": "Напряжение бортовой сети", "unit": "В", "formula": "(256A+B)/1000" }
+              ]
+            },
+            { "id": "freeze_frame", "name": "Стоп-кадр (Freeze Frame)", "type": "special", "description": "Параметры на момент ошибки", "service": "0x02" },
+            { "id": "readiness", "name": "Готовность OBD-II мониторов", "type": "special", "description": "Статус 8 мониторов готовности", "service": "0x01", "pid": "0x01" },
+            { "id": "o2_sensor", "name": "Датчики O2 / Lambda", "type": "special", "description": "Мониторинг лямбда-зондов до и после катализатора", "service": "0x05" },
+            { "id": "oil_reset", "name": "Сброс интервала замены масла", "type": "service", "description": "Сброс лампы MAINT REQD", "note": "Удерживай кнопку ODO/TRIP при включении зажигания до мигания лампы MAINT REQD" },
+            { "id": "throttle_reset", "name": "Сброс адаптации дросселя (ETCS-i)", "type": "adaptation", "description": "После чистки или замены дросселя",
+              "steps": [
+                "Зажигание ON, двигатель не запускать",
+                "Педаль газа до упора, удерживать 3 сек",
+                "Отпустить педаль",
+                "Ключ OFF на 5 сек",
+                "Запустить двигатель"
+              ],
+              "warning": "Не нажимать газ 2 минуты после процедуры"
+            },
+            { "id": "idle_adapt", "name": "Адаптация холостого хода", "type": "adaptation", "description": "После замены АКБ или чистки дросселя",
+              "steps": [
+                "Прогреть до 80-90°C",
+                "Заглушить на 30 сек",
+                "Запустить, холостой ход 10 минут без нагрузки"
+              ]
+            }
+          ]
         },
         {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (климат)",
-          "type": "special",
-          "description": "Очистить коды ошибок климатической системы",
-          "service": "0x04"
+          "id": "abs",
+          "name": "ABS / VSC / TRC",
+          "address": "0x7E1",
+          "response_address": "0x7E9",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов ABS/VSC", "type": "special", "description": "C-коды тормозной системы", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов ABS/VSC", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных ABS", "type": "special", "description": "Скорости 4 колёс, давление ТЖ, статус VSC/TRC" },
+            { "id": "brake_bleed", "name": "Прокачка тормозов с насосом ABS", "type": "activation", "description": "Активация насоса ABS при замене ТЖ", "service_sid": "0x31", "service_did": "0x0101", "warning": "Педаль тормоза должна быть отпущена" }
+          ]
         },
         {
-          "id": "live_data",
-          "name": "Параметры климата",
-          "type": "special",
-          "description": "Температура салона, давление хладагента, температура испарителя, обороты компрессора"
+          "id": "airbag",
+          "name": "SRS / Airbag",
+          "address": "0x7D0",
+          "response_address": "0x7D8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов SRS", "type": "special", "description": "B-коды подушек и ремней", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов SRS", "type": "special", "description": "Сброс кодов SRS", "service": "0x04", "warning": "⚠️ Только после устранения неисправности!" }
+          ]
         },
         {
-          "id": "ac_compressor_test",
-          "name": "Тест компрессора кондиционера",
-          "type": "activation",
-          "description": "Принудительное включение муфты компрессора для проверки",
-          "warning": "Только при наличии хладагента в системе. Не более 30 секунд"
+          "id": "transmission",
+          "name": "АКПП (U760E / CVT)",
+          "address": "0x7E2",
+          "response_address": "0x7EA",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "note": "U760E автомат или вариатор CVT. На механике этого блока нет.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов АКПП", "type": "special", "description": "Коды трансмиссии", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов АКПП", "type": "special", "description": "Сброс кодов АКПП", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных АКПП", "type": "special", "description": "Температура масла, передача, скорость входного вала" },
+            { "id": "adapt_reset", "name": "Сброс адаптаций АКПП", "type": "adaptation", "description": "Обнуление обучения переключений", "warning": "После сброса нужна обкатка АКПП — 20 мин езды в разных режимах" }
+          ]
         }
       ]
     },
-    {
-      "id": "power_steering",
-      "name": "Электроусилитель руля (EPS)",
-      "address": "0x760",
-      "response_address": "0x768",
-      "protocol": "Toyota-CAN",
-      "baudrate": 500000,
-      "note": "EPS присутствует с E140 (2006). E120 — гидравлический ГУР, не диагностируется",
-      "functions": [
+    "e160": {
+      "yearFrom": 2012,
+      "yearTo": 2018,
+      "note": "CAN ISO 15765-4. Двигатели 1ZR-FAE / 2ZR-FAE с системой Valvematic.",
+      "ecus": [
         {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (EPS)",
-          "type": "special",
-          "description": "Коды неисправностей электроусилителя. C1511-C1571 — типичные EPS коды Toyota",
-          "service": "0x03"
+          "id": "engine",
+          "name": "ЭБУ двигателя (ECM) — 1ZR-FAE / 2ZR-FAE Valvematic",
+          "address": "0x7E0",
+          "response_address": "0x7E8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "note": "Valvematic — бесступенчатое регулирование подъёма клапанов. PID 0x0E отражает угол VVT-i.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов DTC", "type": "special", "description": "P-коды двигателя", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов DTC", "type": "special", "description": "Сброс кодов", "service": "0x04", "warning": "Мониторы готовности сбрасываются" },
+            { "id": "live_data", "name": "Поток данных двигателя", "type": "special", "description": "Параметры двигателя Valvematic", "service": "0x01",
+              "pids": [
+                { "pid": "0x0C", "name": "Обороты двигателя", "unit": "RPM", "formula": "(256A+B)/4" },
+                { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x11", "name": "Положение дросселя", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x10", "name": "MAF (расход воздуха)", "unit": "г/с", "formula": "(256A+B)/100" },
+                { "pid": "0x0D", "name": "Скорость", "unit": "км/ч", "formula": "A" },
+                { "pid": "0x06", "name": "STFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x07", "name": "LTFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x0E", "name": "Угол VVT-i / опережения зажигания", "unit": "°", "formula": "A/2-64" },
+                { "pid": "0x0F", "name": "Температура воздуха на впуске", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x14", "name": "O2 B1S1", "unit": "В", "formula": "A/200" },
+                { "pid": "0x15", "name": "O2 B1S2", "unit": "В", "formula": "A/200" },
+                { "pid": "0x5C", "name": "Температура масла", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x42", "name": "Напряжение бортовой сети", "unit": "В", "formula": "(256A+B)/1000" }
+              ]
+            },
+            { "id": "freeze_frame", "name": "Стоп-кадр", "type": "special", "description": "Параметры на момент ошибки", "service": "0x02" },
+            { "id": "readiness", "name": "Готовность мониторов", "type": "special", "description": "Статус 8 OBD-II мониторов", "service": "0x01", "pid": "0x01" },
+            { "id": "valvematic_check", "name": "Проверка системы Valvematic", "type": "special", "description": "Мониторинг угла подъёма клапанов через PIDs VVT-i. Норма: изменение угла при изменении нагрузки.", "note": "Если угол не меняется — диагностировать привод Valvematic" },
+            { "id": "oil_reset", "name": "Сброс интервала замены масла", "type": "service", "description": "Сброс MAINT REQD", "note": "Кнопка ODO/TRIP при зажигании ON до мигания" },
+            { "id": "throttle_reset", "name": "Сброс адаптации дросселя", "type": "adaptation", "description": "После чистки или замены дросселя ETCS-i",
+              "steps": [
+                "Зажигание ON, не запускать двигатель",
+                "Нажать газ до упора на 3 сек",
+                "Отпустить",
+                "Ключ OFF на 5 сек",
+                "Запустить двигатель"
+              ],
+              "warning": "Не нажимать газ 2 минуты после"
+            },
+            { "id": "idle_adapt", "name": "Адаптация ХХ", "type": "adaptation", "description": "Обучение ХХ после замены АКБ или чистки дросселя",
+              "steps": [
+                "Прогреть до 80°C",
+                "Заглушить на 30 сек",
+                "Запустить, ХХ 10 минут"
+              ]
+            }
+          ]
         },
         {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (EPS)",
-          "type": "special",
-          "description": "Очистить коды ошибок EPS",
-          "service": "0x04"
+          "id": "abs",
+          "name": "ABS / VSC / TRC",
+          "address": "0x7E1",
+          "response_address": "0x7E9",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов ABS/VSC", "type": "special", "description": "C-коды тормозной системы", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов ABS/VSC", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных ABS", "type": "special", "description": "Скорости 4 колёс, VSC/TRC статус" },
+            { "id": "brake_bleed", "name": "Прокачка тормозов с ABS", "type": "activation", "description": "Активация насоса ABS при замене ТЖ", "service_sid": "0x31", "service_did": "0x0101", "warning": "Педаль тормоза отпущена" }
+          ]
         },
         {
-          "id": "live_data",
-          "name": "Параметры EPS",
-          "type": "special",
-          "description": "Ток электромотора EPS, угол поворота руля, крутящий момент на руле, температура мотора EPS"
+          "id": "airbag",
+          "name": "SRS / Airbag",
+          "address": "0x7D0",
+          "response_address": "0x7D8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов SRS", "type": "special", "description": "B-коды системы SRS", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов SRS", "type": "special", "description": "Сброс кодов SRS", "service": "0x04", "warning": "⚠️ Только после устранения причины!" }
+          ]
         },
         {
-          "id": "steering_angle_reset",
-          "name": "Калибровка датчика угла руля",
-          "type": "adaptation",
-          "description": "Сброс и повторная калибровка датчика угла поворота рулевого колеса. Обязательна после схождения/развала",
-          "steps": [
-            "Установить колёса прямо",
-            "Зажигание ON",
-            "Повернуть руль полностью влево до упора",
-            "Повернуть руль полностью вправо до упора",
-            "Установить руль в прямое положение",
-            "Зажигание OFF → ON"
-          ],
-          "warning": "Выполнять на ровной поверхности. После регулировки развала/схождения обязательна"
+          "id": "transmission",
+          "name": "АКПП / CVT",
+          "address": "0x7E2",
+          "response_address": "0x7EA",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов АКПП", "type": "special", "description": "Коды трансмиссии", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов АКПП", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных АКПП", "type": "special", "description": "Температура масла, передача" },
+            { "id": "adapt_reset", "name": "Сброс адаптаций АКПП", "type": "adaptation", "description": "Обнуление обучения переключений", "warning": "Нужна обкатка 20 мин после сброса" }
+          ]
+        },
+        {
+          "id": "eps",
+          "name": "Электроусилитель руля (EPS)",
+          "address": "0x7A0",
+          "response_address": "0x7A8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов EPS", "type": "special", "description": "Коды неисправностей электроусилителя", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов EPS", "type": "special", "description": "Сброс кодов EPS", "service": "0x04" },
+            { "id": "live_data", "name": "Параметры EPS", "type": "special", "description": "Ток мотора EPS, угол руля, момент на валу" }
+          ]
         }
       ]
     },
-    {
-      "id": "immobilizer",
-      "name": "Иммобилайзер (IMMO)",
-      "address": "0x780",
-      "response_address": "0x788",
-      "protocol": "Toyota-CAN / ISO 9141",
-      "baudrate": 500000,
-      "functions": [
+    "e210": {
+      "yearFrom": 2018,
+      "yearTo": 2024,
+      "note": "CAN ISO 15765-4 + Toyota UDS (ISO 14229). Гибридная версия (2ZR-FXE / M20A-FXS) — дополнительный блок HV ECU.",
+      "ecus": [
         {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (иммобилайзер)",
-          "type": "special",
-          "description": "Коды неисправностей системы иммобилайзера. B2799 — классический код при проблемах с ключом",
-          "service": "0x03"
+          "id": "engine",
+          "name": "ЭБУ двигателя (ECM) — M20A-FKS / 2ZR-FAE",
+          "address": "0x7E0",
+          "response_address": "0x7E8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов DTC", "type": "special", "description": "P-коды двигателя TNGA", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов DTC", "type": "special", "description": "Сброс кодов", "service": "0x04", "warning": "Мониторы готовности сбрасываются" },
+            { "id": "live_data", "name": "Поток данных двигателя", "type": "special", "description": "Параметры двигателя M20A/2ZR на платформе TNGA", "service": "0x01",
+              "pids": [
+                { "pid": "0x0C", "name": "Обороты двигателя", "unit": "RPM", "formula": "(256A+B)/4" },
+                { "pid": "0x05", "name": "Температура охлаждающей жидкости", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x11", "name": "Положение дросселя", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x10", "name": "MAF", "unit": "г/с", "formula": "(256A+B)/100" },
+                { "pid": "0x0D", "name": "Скорость", "unit": "км/ч", "formula": "A" },
+                { "pid": "0x06", "name": "STFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x07", "name": "LTFT", "unit": "%", "formula": "(A-128)*100/128" },
+                { "pid": "0x0E", "name": "Угол VVT-i", "unit": "°", "formula": "A/2-64" },
+                { "pid": "0x0F", "name": "IAT", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x14", "name": "O2 B1S1", "unit": "В", "formula": "A/200" },
+                { "pid": "0x15", "name": "O2 B1S2", "unit": "В", "formula": "A/200" },
+                { "pid": "0x5C", "name": "Температура масла", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x46", "name": "Температура окружающей среды", "unit": "°C", "formula": "A-40" },
+                { "pid": "0x42", "name": "Напряжение бортовой сети", "unit": "В", "formula": "(256A+B)/1000" }
+              ]
+            },
+            { "id": "freeze_frame", "name": "Стоп-кадр", "type": "special", "description": "Параметры на момент ошибки", "service": "0x02" },
+            { "id": "readiness", "name": "Готовность мониторов", "type": "special", "description": "Статус 8 OBD-II мониторов TNGA", "service": "0x01", "pid": "0x01" },
+            { "id": "o2_sensor", "name": "Датчики O2 / Lambda", "type": "special", "description": "Широкополосный лямбда-зонд A/F до катализатора и узкополосный после", "service": "0x05" },
+            { "id": "oil_reset", "name": "Сброс интервала замены масла", "type": "service", "description": "Сброс MAINT REQD через мультиинформационный дисплей", "note": "Меню → Настройки → Тех. обслуживание → Сброс счётчика масла" },
+            { "id": "throttle_reset", "name": "Сброс адаптации дросселя", "type": "adaptation", "description": "После чистки или замены дросселя ETCS-i",
+              "steps": [
+                "Зажигание ON, не запускать",
+                "Газ до упора 3 сек",
+                "Отпустить",
+                "Ключ OFF на 5 сек",
+                "Запустить"
+              ],
+              "warning": "Не нажимать газ 2 мин после"
+            },
+            { "id": "idle_adapt", "name": "Адаптация ХХ", "type": "adaptation", "description": "После замены АКБ или чистки дросселя",
+              "steps": ["Прогреть до 80°C", "Заглушить 30 сек", "ХХ 10 мин"]
+            }
+          ]
         },
         {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (иммобилайзер)",
-          "type": "special",
-          "description": "Очистить коды ошибок иммобилайзера",
-          "service": "0x04"
+          "id": "abs",
+          "name": "ABS / VSC / TRC / Pre-Collision",
+          "address": "0x7E1",
+          "response_address": "0x7E9",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов ABS/VSC", "type": "special", "description": "C-коды тормозной системы E210", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов ABS/VSC", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных ABS", "type": "special", "description": "Скорости колёс, G-сенсор, VSC/TRC" },
+            { "id": "brake_bleed", "name": "Прокачка тормозов с ABS", "type": "activation", "description": "Насос ABS при замене ТЖ", "service_sid": "0x31", "service_did": "0x0101", "warning": "Педаль тормоза отпущена" }
+          ]
         },
         {
-          "id": "key_registration",
-          "name": "Регистрация ключей",
-          "type": "adaptation",
-          "description": "Регистрация новых ключей зажигания с чипом (транспондером). Требует наличия хотя бы одного зарегистрированного ключа",
-          "warning": "Процедура зависит от года выпуска. На E170/E210 требуется дилерский пин-код"
-        }
-      ]
-    },
-    {
-      "id": "tpms",
-      "name": "Система контроля давления в шинах (TPMS)",
-      "address": "0x7D2",
-      "response_address": "0x7DA",
-      "protocol": "Toyota-CAN",
-      "baudrate": 500000,
-      "note": "TPMS присутствует на E150 (2006+) и E170/E210. На E120/E140 — опция",
-      "functions": [
-        {
-          "id": "dtc_read",
-          "name": "Чтение кодов DTC (TPMS)",
-          "type": "special",
-          "description": "Коды неисправностей датчиков давления в шинах",
-          "service": "0x03"
+          "id": "airbag",
+          "name": "SRS / Airbag",
+          "address": "0x7D0",
+          "response_address": "0x7D8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов SRS", "type": "special", "description": "B-коды системы SRS E210", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов SRS", "type": "special", "description": "Сброс кодов SRS", "service": "0x04", "warning": "⚠️ Только после устранения причины!" }
+          ]
         },
         {
-          "id": "dtc_clear",
-          "name": "Удаление кодов DTC (TPMS)",
-          "type": "special",
-          "description": "Очистить коды ошибок TPMS",
-          "service": "0x04"
+          "id": "transmission",
+          "name": "CVT (K120) / e-CVT (Hybrid)",
+          "address": "0x7E2",
+          "response_address": "0x7EA",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "note": "K120 CVT для бензиновых версий. e-CVT для гибрида — другой блок.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов CVT", "type": "special", "description": "Коды вариатора K120", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов CVT", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Поток данных CVT", "type": "special", "description": "Температура масла CVT, передаточное число, режим" },
+            { "id": "adapt_reset", "name": "Сброс адаптаций CVT", "type": "adaptation", "description": "Обнуление данных обучения вариатора", "warning": "Нужна обкатка 20 мин после сброса" }
+          ]
         },
         {
-          "id": "live_data",
-          "name": "Давление в шинах",
-          "type": "special",
-          "description": "Текущее давление в каждой шине (кПа / PSI), температура датчиков, уровень заряда батарей датчиков"
+          "id": "eps",
+          "name": "Электроусилитель руля (EPS)",
+          "address": "0x7A0",
+          "response_address": "0x7A8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов EPS", "type": "special", "description": "Коды EPS", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов EPS", "type": "special", "description": "Сброс кодов", "service": "0x04" },
+            { "id": "live_data", "name": "Параметры EPS", "type": "special", "description": "Ток, угол руля, момент" }
+          ]
         },
         {
-          "id": "tpms_reset",
-          "name": "Сброс / регистрация датчиков TPMS",
-          "type": "adaptation",
-          "description": "Регистрация новых датчиков TPMS после замены шин или датчиков",
-          "steps": [
-            "Накачать все шины до нормы (2.2-2.5 бар для Corolla)",
-            "Нажать и удерживать кнопку TPMS SET до мигания лампы (3-5 сек)",
-            "Проехать 20-30 км/ч в течение 5 минут",
-            "Лампа TPMS должна погаснуть"
-          ],
-          "note": "Процедура для автоматической регистрации. Для ручной — требуется TPMS tool"
+          "id": "hybrid",
+          "name": "Гибридная система HV ECU (только Hybrid)",
+          "address": "0x7C0",
+          "response_address": "0x7C8",
+          "protocol": "CAN ISO 15765-4",
+          "baudrate": 500000,
+          "note": "Только для версий Toyota Corolla Hybrid (M20A-FXS). На бензиновых — блока нет.",
+          "functions": [
+            { "id": "dtc_read", "name": "Чтение кодов HV", "type": "special", "description": "Коды гибридной системы (P3xxx)", "service": "0x03" },
+            { "id": "dtc_clear", "name": "Удаление кодов HV", "type": "special", "description": "Сброс кодов HV", "service": "0x04", "warning": "⚠️ Высоковольтная система 201В! Снять сервисный штекер перед работами!" },
+            { "id": "live_data", "name": "Поток данных HV", "type": "special", "description": "SOC батареи, температура ячеек, ток/напряжение HV, мощность MG1/MG2",
+              "pids": [
+                { "pid": "0x5B", "name": "SOC гибридной батареи", "unit": "%", "formula": "A*100/255" },
+                { "pid": "0x5D", "name": "Температура батареи", "unit": "°C", "formula": "A-40" }
+              ]
+            }
+          ]
         }
       ]
     }
-  ],
-  "common_dtc_codes": {
-    "P0171": "Система бедная смесь (банк 1) — засорён MAF, утечка воздуха, слабый бензонасос",
-    "P0300": "Пропуски зажигания (случайные) — свечи, катушки, форсунки",
-    "P0420": "Низкая эффективность катализатора — катализатор, кислородный датчик",
-    "P0441": "Ошибка EVAP — клапан продувки, шланги испарительной системы",
-    "P0500": "Датчик скорости автомобиля (VSS) — датчик ABS или приборки",
-    "P0705": "Датчик положения селектора АКПП — характерно для Corolla с АКПП",
-    "P1349": "Система VVT-i — OCV клапан (соленоид VVT), сетка маслоприёмника",
-    "P1604": "Ошибка запуска двигателя — иммобилайзер, стартер, АКБ",
-    "C0200": "Датчик скорости правого переднего колеса ABS",
-    "C0210": "Датчик скорости левого переднего колеса ABS",
-    "C1310": "Низкое напряжение питания ABS",
-    "B1604": "Ошибка ключа / иммобилайзера"
   },
   "notes": [
-    "Двигатели: 1ZZ-FE (E120/E130), 2ZR-FE (E140/E150/E160), 2ZR-FAE (E170 Valvematic), M20A-FKS (E210 2019+)",
-    "E210 (2019+) использует CAN FD на некоторых шинах — может требовать адаптер с поддержкой CAN FD",
-    "Для функций Toyota-specific (адрес 0x7xx) нужен адаптер с поддержкой расширенной диагностики (не все ELM327 клоны)",
-    "Стандартные OBD-II функции (0x7E0) работают с любым ELM327 v1.5+",
-    "При работе с SRS/Airbag (0x7D0) соблюдать меры предосторожности — отключить АКБ за 30 минут до работ"
+    "E110 (1995-2002): K-Line ISO 9141-2, инициализация 5-Baud, адрес ECM 0x10",
+    "E120/E130 (2000-2006): KWP2000 ISO 14230-4, инициализация Fast Init, адрес ECM 0x10",
+    "E150 (2006-2013): CAN 500 кбит/с, адрес ECM 0x7E0 — первый CAN Corolla",
+    "E160/E170 (2012-2019): CAN 500 кбит/с, двигатель Valvematic, адрес ECM 0x7E0",
+    "E210 (2018-2024): CAN 500 кбит/с, платформа TNGA-C, есть версия Hybrid с HV ECU"
   ]
 }

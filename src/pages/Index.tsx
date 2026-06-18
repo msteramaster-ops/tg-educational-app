@@ -447,7 +447,7 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
   const [scanResults, setScanResults] = useState<{ecu: string; faults: DtcEntry[]}[]>([]);
 
   // Встроенные протоколы (грузятся из public/protocols/ при старте)
-  const { findProtocol, loading: protocolsLoading, totalCount } = useBuiltinProtocols();
+  const { findProtocol, findProtocolForYear, loading: protocolsLoading, totalCount } = useBuiltinProtocols();
   const [protocolEcus, setProtocolEcus] = useState<EcuBlock[] | null>(null);
   const [protocolStatus, setProtocolStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
 
@@ -470,9 +470,17 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
     }, 120);
   };
 
-  // Загрузка протокола после выбора года — из встроенных файлов
-  const loadProtocolForSelection = useCallback(async (makeId: string, modelId: string, _year: number) => {
+  // Загрузка протокола после выбора года — подбирает ECU по поколению
+  const loadProtocolForSelection = useCallback(async (makeId: string, modelId: string, year: number) => {
     setProtocolStatus('loading');
+    // Сначала пробуем подбор по году (для моделей с ecusByGeneration)
+    const ecusByYear = findProtocolForYear(makeId, modelId, year);
+    if (ecusByYear && ecusByYear.length > 0) {
+      setProtocolEcus(ecusByYear as EcuBlock[]);
+      setProtocolStatus('found');
+      return;
+    }
+    // Fallback — общий протокол без разбивки по годам
     const data = findProtocol(makeId, modelId);
     if (data && data.ecus?.length > 0) {
       setProtocolEcus(data.ecus as EcuBlock[]);
@@ -481,7 +489,7 @@ function ScreenVehicle({ btConnected }: { btConnected: boolean }) {
       setProtocolEcus(null);
       setProtocolStatus('not_found');
     }
-  }, [findProtocol]);
+  }, [findProtocol, findProtocolForYear]);
 
   const startScan = () => {
     setScanning(true); setScanResults([]);

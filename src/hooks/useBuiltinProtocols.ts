@@ -51,12 +51,30 @@ export interface ProtocolEcu {
   }>;
 }
 
+export interface ProtocolGeneration {
+  id: string;
+  name: string;
+  yearFrom: number;
+  yearTo: number;
+  engines?: string;
+  protocol?: string;
+}
+
+export interface ProtocolGenerationEcus {
+  yearFrom: number;
+  yearTo: number;
+  note?: string;
+  ecus: ProtocolEcu[];
+}
+
 export interface BuiltinProtocol {
   makeId: string;
   modelId: string;
   name: string;
   years?: number[];
   ecus: ProtocolEcu[];
+  generations?: ProtocolGeneration[];
+  ecusByGeneration?: Record<string, ProtocolGenerationEcus>;
   common_dtc_codes?: Record<string, string>;
   notes?: string[];
 }
@@ -106,16 +124,30 @@ export function useBuiltinProtocols() {
 
   // Найти протокол для конкретного авто
   const findProtocol = useCallback((makeId: string, modelId: string): BuiltinProtocol | null => {
-    // Точное совпадение
     const exactKey = `${makeId}_${modelId}`;
     if (protocols[exactKey]) return protocols[exactKey];
-
-    // Поиск по частичному совпадению makeId
     const byMake = Object.values(protocols).find(p => p.makeId === makeId);
     if (byMake) return byMake;
-
     return null;
   }, [protocols]);
+
+  // Найти ECU для конкретного авто и года — подбирает нужное поколение
+  const findProtocolForYear = useCallback((makeId: string, modelId: string, year: number): ProtocolEcu[] | null => {
+    const proto = findProtocol(makeId, modelId);
+    if (!proto) return null;
+
+    // Если есть ecusByGeneration — ищем поколение по году
+    if (proto.ecusByGeneration) {
+      // Сортируем по yearFrom убыванию — берём самое позднее подходящее
+      const gens = Object.values(proto.ecusByGeneration)
+        .filter(g => year >= g.yearFrom && year <= g.yearTo)
+        .sort((a, b) => b.yearFrom - a.yearFrom);
+      if (gens.length > 0) return gens[0].ecus;
+    }
+
+    // Иначе возвращаем базовые ECU
+    return proto.ecus.length > 0 ? proto.ecus : null;
+  }, [findProtocol]);
 
   // Получить список всех доступных протоколов
   const getAllProtocols = useCallback((): BuiltinProtocol[] => {
@@ -127,6 +159,7 @@ export function useBuiltinProtocols() {
     loading,
     loaded,
     findProtocol,
+    findProtocolForYear,
     getAllProtocols,
     totalCount: Object.keys(protocols).length,
   };
