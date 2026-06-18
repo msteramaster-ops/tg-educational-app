@@ -341,24 +341,15 @@ export const VEHICLE_DB: VehicleMake[] = [
     id: 'toyota', name: 'Toyota', logo: '🔴', region: 'asia',
     models: [
       {
-        id: 'corolla_e110', name: 'Corolla E110 (1995–2002)', years: [1995,1996,1997,1998,1999,2000,2001,2002],
-        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU()],
-      },
-      {
-        id: 'corolla_e120', name: 'Corolla E120/E130 (2000–2006)', years: [2000,2001,2002,2003,2004,2005,2006],
-        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU()],
-      },
-      {
-        id: 'corolla_e150', name: 'Corolla E150 (2006–2013)', years: [2006,2007,2008,2009,2010,2011,2012,2013],
-        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU()],
-      },
-      {
-        id: 'corolla_e160', name: 'Corolla E160/E170 (2012–2019)', years: [2012,2013,2014,2015,2016,2017,2018,2019],
-        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU()],
-      },
-      {
-        id: 'corolla_e210', name: 'Corolla E210 (2018–2024)', years: [2018,2019,2020,2021,2022,2023,2024],
-        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU()],
+        id: 'corolla', name: 'Corolla (1995–2024)',
+        years: [1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024],
+        ecus: [TOYOTA_ENGINE_ECU(), TOYOTA_ABS_ECU(),
+          { id: 'airbag', name: 'Модуль SRS/Airbag', address: '0x52', protocol: 'Toyota-CAN/K-Line',
+            functions: [
+              { id: 'dtc_read',  name: 'Чтение кодов DTC',  type: 'special', description: 'Ошибки SRS' },
+              { id: 'dtc_clear', name: 'Удаление кодов DTC', type: 'special', description: 'Очистка', warning: '⚠️ Осторожно с системой SRS' },
+            ]},
+        ],
       },
       {
         id: 'camry', name: 'Camry (V50/V70)', years: [2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024],
