@@ -7,9 +7,12 @@ on:
 
 jobs:
   build:
-    name: Build APK
+    name: Собрать APK
     runs-on: ubuntu-latest
     timeout-minutes: 40
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -36,10 +39,7 @@ jobs:
         run: npm run build
 
       - name: Add Android platform
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+        run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
@@ -48,35 +48,11 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Rename APK
-        run: |
-          mkdir -p output
-          cp android/app/build/outputs/apk/debug/app-debug.apk output/OBD-Pro.apk
-
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: OBD-Pro-APK
-          path: output/OBD-Pro.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: "OBD Pro — Сборка #${{ github.run_number }}"
-          body: |
-            Автоматическая сборка. Коммит: `${{ github.sha }}`
-
-            **Как установить:**
-            1. Скачай `OBD-Pro.apk`
-            2. Перешли на телефон (Telegram, почта, USB)
-            3. Открой на телефоне → Установить
-            4. Если спросит разрешение — разреши установку из неизвестных источников
-          files: output/OBD-Pro.apk
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
