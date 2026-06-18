@@ -1093,6 +1093,129 @@ const toyotaCorollaE210: ModelDefinition = {
   ecus: buildToyotaEcus({ hasHybrid: true }),
 };
 
+// ── Corolla E120 / E130 (2000–2006) ──────────────────────────────────────────
+// Протокол: ISO 9141-2 / KWP2000 (ISO 14230-4), адрес ECM 0x10
+// Нет CAN-шины, диагностика через K-Line (2-pin или стандартный OBD2)
+
+const corollaE120Ecus: EcuDefinition[] = [
+  {
+    id: 'ecm',
+    name: 'Блок управления двигателем (ECM)',
+    address: '0x10',
+    protocol: 'ISO 9141-2 / KWP2000 (K-Line)',
+    description: 'Блок управления двигателем Corolla E120/E130. Двигатели: 1ZZ-FE, 2ZZ-GE, 1NZ-FE. Диагностика через K-Line, протокол KWP2000.',
+    functions: [
+      { id: 'read_dtc', name: 'Считать коды неисправностей (DTC)', type: 'read_dtc', description: 'Считывает коды неисправностей из памяти ECM.', protocol_cmd: '18 00 FF 00' },
+      { id: 'clear_dtc', name: 'Стереть коды неисправностей', type: 'clear_dtc', description: 'Удаляет все сохранённые DTC из памяти ECM.', protocol_cmd: '14 FF 00', warning: 'Коды стираются безвозвратно. Убедитесь в устранении причины.' },
+      { id: 'live_data', name: 'Поток данных двигателя', type: 'live_data', description: 'Обороты, температура охлаждающей жидкости, положение дросселя, MAF, коррекции топлива, угол зажигания.', protocol_cmd: '21 01', params: [
+        { id: 'rpm', name: 'Обороты двигателя', pid: '0x0C', unit: 'RPM', min: 0, max: 8000, group: 'Двигатель' },
+        { id: 'coolant_temp', name: 'Температура охлаждающей жидкости', pid: '0x05', unit: '°C', min: -40, max: 150, group: 'Двигатель' },
+        { id: 'throttle', name: 'Положение дросселя', pid: '0x11', unit: '%', min: 0, max: 100, group: 'Двигатель' },
+        { id: 'maf', name: 'Массовый расход воздуха (MAF)', pid: '0x10', unit: 'г/с', min: 0, max: 100, group: 'Воздух' },
+        { id: 'map', name: 'Давление во впускном коллекторе (MAP)', pid: '0x0B', unit: 'кПа', min: 0, max: 255, group: 'Воздух' },
+        { id: 'iat', name: 'Температура воздуха на впуске (IAT)', pid: '0x0F', unit: '°C', min: -40, max: 100, group: 'Воздух' },
+        { id: 'stft', name: 'Краткосрочная коррекция топлива (STFT)', pid: '0x06', unit: '%', min: -25, max: 25, group: 'Топливо' },
+        { id: 'ltft', name: 'Долгосрочная коррекция топлива (LTFT)', pid: '0x07', unit: '%', min: -25, max: 25, group: 'Топливо' },
+        { id: 'ignition_timing', name: 'Угол опережения зажигания', pid: '0x0E', unit: '°', min: -64, max: 64, group: 'Зажигание' },
+        { id: 'o2_b1s1', name: 'Датчик O2 банк 1 датчик 1 (до катализатора)', pid: '0x14', unit: 'В', min: 0, max: 1.275, group: 'Топливо' },
+        { id: 'o2_b1s2', name: 'Датчик O2 банк 1 датчик 2 (после катализатора)', pid: '0x15', unit: 'В', min: 0, max: 1.275, group: 'Топливо' },
+        { id: 'vehicle_speed', name: 'Скорость автомобиля', pid: '0x0D', unit: 'км/ч', min: 0, max: 255, group: 'Двигатель' },
+        { id: 'battery_voltage', name: 'Напряжение бортовой сети', pid: '0x42', unit: 'В', min: 6, max: 16, group: 'Электрика' },
+      ]},
+      { id: 'freeze_frame', name: 'Замороженный кадр (Freeze Frame)', type: 'live_data', description: 'Параметры двигателя на момент появления ошибки DTC.', protocol_cmd: '12 00' },
+      { id: 'readiness', name: 'Готовность OBD-II мониторов', type: 'service', description: 'Статус мониторов готовности: катализатор, лямбда, EVAP, EGR, пропуски зажигания.' },
+      { id: 'idle_learn', name: 'Обучение холостого хода', type: 'adaptation', description: 'Сброс и повторное обучение оборотов холостого хода после чистки дросселя.', warning: 'Прогрейте двигатель до рабочей температуры перед процедурой.' },
+      { id: 'map_reset', name: 'Сброс топливных адаптаций (LTFT)', type: 'adaptation', description: 'Обнуление долгосрочных коррекций топливной смеси.', warning: 'После сброса потребуется обкатка 15-20 минут езды.' },
+    ],
+  },
+  {
+    id: 'abs',
+    name: 'Блок ABS',
+    address: '0x28',
+    protocol: 'ISO 9141-2 / KWP2000 (K-Line)',
+    description: 'Блок управления антиблокировочной системой тормозов Corolla E120.',
+    functions: [
+      { id: 'abs_read_dtc', name: 'Считать коды ABS', type: 'read_dtc', description: 'Считывает коды неисправностей блока ABS.', protocol_cmd: '18 00 FF 00' },
+      { id: 'abs_clear_dtc', name: 'Стереть коды ABS', type: 'clear_dtc', description: 'Удаляет коды неисправностей ABS.', protocol_cmd: '14 FF 00' },
+      { id: 'abs_live_data', name: 'Скорости колёс', type: 'live_data', description: 'Скорости отдельных колёс, статус датчиков ABS в реальном времени.', params: [
+        { id: 'wheel_fl', name: 'Скорость переднего левого колеса', unit: 'км/ч', min: 0, max: 255, group: 'ABS' },
+        { id: 'wheel_fr', name: 'Скорость переднего правого колеса', unit: 'км/ч', min: 0, max: 255, group: 'ABS' },
+        { id: 'wheel_rl', name: 'Скорость заднего левого колеса', unit: 'км/ч', min: 0, max: 255, group: 'ABS' },
+        { id: 'wheel_rr', name: 'Скорость заднего правого колеса', unit: 'км/ч', min: 0, max: 255, group: 'ABS' },
+      ]},
+    ],
+  },
+  {
+    id: 'srs',
+    name: 'Блок SRS (подушки безопасности)',
+    address: '0x52',
+    protocol: 'ISO 9141-2 / KWP2000 (K-Line)',
+    description: 'Блок управления системой пассивной безопасности Corolla E120. Подушки и ремни с преднатяжителями.',
+    functions: [
+      { id: 'srs_read_dtc', name: 'Считать коды SRS', type: 'read_dtc', description: 'Считывает коды неисправностей подушек и ремней безопасности.', protocol_cmd: '18 00 FF 00' },
+      { id: 'srs_clear_dtc', name: 'Стереть коды SRS', type: 'clear_dtc', description: 'Удаляет коды неисправностей SRS.', protocol_cmd: '14 FF 00', warning: 'Работу с SRS выполнять только после отключения АКБ на 30 секунд. Случайное срабатывание подушки опасно.' },
+    ],
+  },
+];
+
+const toyotaCorollaE120: ModelDefinition = {
+  id: 'corolla_e120',
+  name: 'Toyota Corolla E120 / E130',
+  years: [2000, 2001, 2002, 2003, 2004, 2005, 2006],
+  platform: 'E120 / E130 (K-Line / ISO 9141)',
+  ecus: corollaE120Ecus,
+};
+
+// ── Corolla E110 (1995–2002) ──────────────────────────────────────────────────
+// Протокол: ISO 9141-2, двигатели 4A-FE, 5A-FE, 7A-FE, 3S-FE
+
+const corollaE110Ecus: EcuDefinition[] = [
+  {
+    id: 'ecm',
+    name: 'Блок управления двигателем (ECM)',
+    address: '0x10',
+    protocol: 'ISO 9141-2 (K-Line)',
+    description: 'Блок управления двигателем Corolla E110. Двигатели: 4A-FE, 5A-FE, 7A-FE, 3S-FE. Ранний OBD-II / OBD-I протокол Toyota.',
+    functions: [
+      { id: 'read_dtc', name: 'Считать коды неисправностей (DTC)', type: 'read_dtc', description: 'Считывает коды неисправностей из памяти ECM (стандарт OBD-II Mode 03).', protocol_cmd: '03' },
+      { id: 'clear_dtc', name: 'Стереть коды неисправностей', type: 'clear_dtc', description: 'Сброс кодов DTC из памяти ECM.', protocol_cmd: '04', warning: 'После сброса мониторы готовности сбрасываются. Потребуется проездной цикл.' },
+      { id: 'live_data', name: 'Поток данных двигателя', type: 'live_data', description: 'Обороты, температура, дроссель, коррекции топлива.', params: [
+        { id: 'rpm', name: 'Обороты двигателя', pid: '0x0C', unit: 'RPM', min: 0, max: 7000, group: 'Двигатель' },
+        { id: 'coolant_temp', name: 'Температура охлаждающей жидкости', pid: '0x05', unit: '°C', min: -40, max: 140, group: 'Двигатель' },
+        { id: 'throttle', name: 'Положение дросселя', pid: '0x11', unit: '%', min: 0, max: 100, group: 'Двигатель' },
+        { id: 'vehicle_speed', name: 'Скорость', pid: '0x0D', unit: 'км/ч', min: 0, max: 200, group: 'Двигатель' },
+        { id: 'stft', name: 'Краткосрочная коррекция топлива', pid: '0x06', unit: '%', min: -25, max: 25, group: 'Топливо' },
+        { id: 'ltft', name: 'Долгосрочная коррекция топлива', pid: '0x07', unit: '%', min: -25, max: 25, group: 'Топливо' },
+        { id: 'iat', name: 'Температура воздуха на впуске', pid: '0x0F', unit: '°C', min: -40, max: 100, group: 'Воздух' },
+        { id: 'ignition_timing', name: 'Угол опережения зажигания', pid: '0x0E', unit: '°', min: -64, max: 64, group: 'Зажигание' },
+        { id: 'o2_b1s1', name: 'Лямбда-зонд (до катализатора)', pid: '0x14', unit: 'В', min: 0, max: 1.275, group: 'Топливо' },
+        { id: 'battery_voltage', name: 'Напряжение бортовой сети', pid: '0x42', unit: 'В', min: 6, max: 16, group: 'Электрика' },
+      ]},
+      { id: 'readiness', name: 'Готовность OBD-II мониторов', type: 'service', description: 'Статус мониторов: катализатор, лямбда, пропуски зажигания, EVAP.' },
+      { id: 'idle_learn', name: 'Обучение холостого хода', type: 'adaptation', description: 'Процедура обучения оборотов ХХ (необходима после чистки дросселя или снятия АКБ).', warning: 'Двигатель должен быть прогрет до рабочей температуры.' },
+    ],
+  },
+  {
+    id: 'abs',
+    name: 'Блок ABS (при наличии)',
+    address: '0x28',
+    protocol: 'ISO 9141-2 (K-Line)',
+    description: 'Блок ABS Corolla E110 (устанавливался опционально на ряд комплектаций).',
+    functions: [
+      { id: 'abs_read_dtc', name: 'Считать коды ABS', type: 'read_dtc', description: 'Коды неисправностей датчиков скорости колёс и гидроблока ABS.', protocol_cmd: '18 00 FF 00' },
+      { id: 'abs_clear_dtc', name: 'Стереть коды ABS', type: 'clear_dtc', description: 'Сброс кодов неисправностей ABS.', protocol_cmd: '14 FF 00' },
+    ],
+  },
+];
+
+const toyotaCorollaE110: ModelDefinition = {
+  id: 'corolla_e110',
+  name: 'Toyota Corolla E110',
+  years: [1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002],
+  platform: 'E110 (ISO 9141-2 / OBD-I)',
+  ecus: corollaE110Ecus,
+};
+
 // ── Экспорт ───────────────────────────────────────────────────────────────────
 
 const toyotaDB: MakeDB = {
@@ -1100,7 +1223,7 @@ const toyotaDB: MakeDB = {
   name: 'Toyota',
   region: 'JP/GLOBAL',
   protocol_family: 'Toyota CAN / ISO 15765-4 / ISO 14229 UDS / Toyota Techstream',
-  models: [toyotaCamryV70, toyotaRav4V, toyotaLandCruiser300, toyotaHighlanderU70, toyotaCorollaE210],
+  models: [toyotaCorollaE110, toyotaCorollaE120, toyotaCamryV70, toyotaRav4V, toyotaLandCruiser300, toyotaHighlanderU70, toyotaCorollaE210],
 };
 
 export default toyotaDB;
